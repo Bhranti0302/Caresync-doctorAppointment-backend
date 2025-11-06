@@ -20,22 +20,10 @@ const userSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
     },
-    age: {
-      type: Number,
-      min: [0, "Age must be positive"],
-    },
-    gender: {
-      type: String,
-      enum: ["Male", "Female", "Other"],
-    },
-    address: {
-      type: String,
-      default: "India",
-    },
-    phone: {
-      type: String,
-      default: "+91 00000 00000",
-    },
+    age: { type: Number, min: [0, "Age must be positive"] },
+    gender: { type: String, enum: ["Male", "Female", "Other"] },
+    address: { type: String, default: "India" },
+    phone: { type: String, default: "+91 00000 00000" },
     role: {
       type: String,
       enum: ["patient", "doctor", "admin"],
@@ -45,6 +33,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "https://cdn-icons-png.flaticon.com/512/9131/9131529.png",
     },
+
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
