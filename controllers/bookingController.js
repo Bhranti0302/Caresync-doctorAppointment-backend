@@ -48,3 +48,45 @@ export const updateAppointment = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// ✅ Get appointments by user (patient) ID
+export const getByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Patients can only view their own appointments
+    if (req.user.role === "patient" && req.user._id.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ message: "Access denied: not your appointments" });
+    }
+
+    const appointments = await Appointment.find({ userId }).populate(
+      "doctorId"
+    );
+    res.status(200).json(appointments);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch appointments", error });
+  }
+};
+
+// ✅ Get appointments by doctor ID
+export const getByDoctorId = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+
+    // Doctors can only view their own appointments
+    if (req.user.role === "doctor" && req.user._id.toString() !== doctorId) {
+      return res
+        .status(403)
+        .json({ message: "Access denied: not your appointments" });
+    }
+
+    const appointments = await Appointment.find({ doctorId }).populate(
+      "userId"
+    );
+    res.status(200).json(appointments);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch appointments", error });
+  }
+};
