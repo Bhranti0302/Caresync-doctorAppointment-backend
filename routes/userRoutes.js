@@ -4,14 +4,15 @@ import {
   userController,
   updateUserProfile,
 } from "../controllers/userController.js";
-import { protect, authorize } from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js"; // ✅ removed authorize
 
 const router = express.Router();
 
-router.get("/", protect, authorize("admin"), userController.getAll);
+// ✅ Only logged-in users can access these routes
+router.get("/", protect, userController.getAll);
 router.get("/:id", protect, userController.getById);
 router.put("/:id", protect, upload.single("image"), userController.updateById);
 router.put("/profile", protect, upload.single("image"), updateUserProfile);
-router.delete("/:id", protect, authorize("admin"), userController.deleteById);
+router.delete("/:id", protect, userController.deleteById);
 
 export default router;

@@ -1,17 +1,43 @@
+// controllers/bookingController.js
 import Appointment from "../models/appointmentModel.js";
 import Doctor from "../models/doctorModel.js";
-import { createBaseController } from "./baseController.js";
 
-export const bookingController = createBaseController(Appointment, [
-  { path: "doctor", select: "name speciality" },
-  { path: "user", select: "name email" },
-]);
+// --- GET ALL ---
+export const getAll = async (req, res) => {
+  try {
+    const appointments = await Appointment.find().populate("doctor user");
+    res.status(200).json(appointments);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-// ✅ Create a new appointment
+// --- GET BY ID ---
+export const getById = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id).populate(
+      "doctor user"
+    );
+    res.status(200).json(appointment);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- DELETE ---
+export const deleteById = async (req, res) => {
+  try {
+    await Appointment.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// --- CREATE ---
 export const createAppointment = async (req, res) => {
   try {
     const { doctor, date, time, reason } = req.body;
-
     const doctorData = await Doctor.findById(doctor);
     if (!doctorData)
       return res.status(404).json({ message: "Doctor not found" });
@@ -25,16 +51,15 @@ export const createAppointment = async (req, res) => {
       fees: doctorData.fees,
     });
 
-    res.status(201).json({
-      message: "Appointment created successfully",
-      appointment: newAppointment,
-    });
+    res
+      .status(201)
+      .json({ message: "Created successfully", appointment: newAppointment });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ Update appointment
+// --- UPDATE ---
 export const updateAppointment = async (req, res) => {
   try {
     const { status } = req.body;
@@ -49,36 +74,26 @@ export const updateAppointment = async (req, res) => {
   }
 };
 
-// ✅ Get appointments by user ID
+// --- GET BY USER ---
 export const getByUserId = async (req, res) => {
   try {
-    const { userId } = req.params;
-
-    if (req.user.role === "user" && req.user._id.toString() !== userId)
-      return res.status(403).json({ message: "Access denied" });
-
-    const appointments = await Appointment.find({ user: userId }).populate(
-      "doctor"
-    );
+    const appointments = await Appointment.find({
+      user: req.params.userId,
+    }).populate("doctor");
     res.status(200).json(appointments);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch appointments", error });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ Get appointments by doctor ID
+// --- GET BY DOCTOR ---
 export const getByDoctorId = async (req, res) => {
   try {
-    const { doctorId } = req.params;
-
-    if (req.user.role === "doctor" && req.user._id.toString() !== doctorId)
-      return res.status(403).json({ message: "Access denied" });
-
-    const appointments = await Appointment.find({ doctor: doctorId }).populate(
-      "user"
-    );
+    const appointments = await Appointment.find({
+      doctor: req.params.doctorId,
+    }).populate("user");
     res.status(200).json(appointments);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch appointments", error });
+    res.status(500).json({ message: error.message });
   }
 };

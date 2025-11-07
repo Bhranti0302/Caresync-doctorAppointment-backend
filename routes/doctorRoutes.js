@@ -4,21 +4,14 @@ import {
   addDoctor,
   doctorController,
 } from "../controllers/doctorController.js";
-import { protect, authorize } from "../middleware/authMiddleware.js";
-
+import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
-// Add doctor (with image)
-router.post(
-  "/add",
-  protect,
-  authorize("admin"),
-  upload.single("image"),
-  addDoctor
-);
+// ✅ Any logged-in user can add a doctor (adjust as needed)
+router.post("/add", protect, upload.single("image"), addDoctor);
 
-// CRUD
-router.get("/", protect, authorize("admin"), doctorController.getAll);
+// ✅ CRUD routes
+router.get("/", protect, doctorController.getAll);
 router.get("/:id", protect, doctorController.getById);
 router.put(
   "/:id",
@@ -26,6 +19,6 @@ router.put(
   upload.single("image"),
   doctorController.updateById
 );
-router.delete("/:id", protect, authorize("admin"), doctorController.deleteById);
+router.delete("/:id", protect, doctorController.deleteById);
 
 export default router;

@@ -1,32 +1,23 @@
 import express from "express";
 import {
-  bookingController,
+  getAll,
+  getById,
+  getByUserId,
+  getByDoctorId,
   createAppointment,
   updateAppointment,
+  deleteById,
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Get all appointments (for logged-in user)
-router.get("/", protect, bookingController.getAll);
-
-// Get appointment by ID
-router.get("/:id", protect, bookingController.getById);
-
-// Get appointments by user ID
-router.get("/user/:userId", protect, bookingController.getByUserId);
-
-// Get appointments by doctor ID
-router.get("/doctor/:doctorId", protect, bookingController.getByDoctorId);
-
-// Create new appointment
+router.get("/", protect, getAll);
+router.get("/:id", protect, getById);
+router.get("/user/:userId", protect, getByUserId);
+router.get("/doctor/:doctorId", protect, getByDoctorId);
 router.post("/", protect, createAppointment);
-
-// Update appointment
 router.put("/:id", protect, updateAppointment);
-
-// Delete appointment
-router.delete("/:id", protect, bookingController.deleteById);
+router.delete("/:id", protect, deleteById);
 
 export default router;
