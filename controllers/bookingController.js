@@ -7,19 +7,18 @@ export const bookingController = createBaseController(Appointment, [
   { path: "user", select: "name email" },
 ]);
 
+// ✅ Create a new appointment
 export const createAppointment = async (req, res) => {
   try {
     const { doctor, date, time, reason } = req.body;
 
-    // ✅ Doctor must exist
     const doctorData = await Doctor.findById(doctor);
     if (!doctorData)
       return res.status(404).json({ message: "Doctor not found" });
 
-    // ✅ Create appointment with logged-in user (from token)
     const newAppointment = await Appointment.create({
       doctor,
-      user: req.user._id, // ✅ use req.user (from token)
+      user: req.user._id,
       date,
       time,
       reason,
@@ -35,6 +34,7 @@ export const createAppointment = async (req, res) => {
   }
 };
 
+// ✅ Update appointment
 export const updateAppointment = async (req, res) => {
   try {
     const { status } = req.body;
@@ -49,20 +49,16 @@ export const updateAppointment = async (req, res) => {
   }
 };
 
-// ✅ Get appointments by user (patient) ID
+// ✅ Get appointments by user ID
 export const getByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Patients can only view their own appointments
-    if (req.user.role === "patient" && req.user._id.toString() !== userId) {
-      return res
-        .status(403)
-        .json({ message: "Access denied: not your appointments" });
-    }
+    if (req.user.role === "user" && req.user._id.toString() !== userId)
+      return res.status(403).json({ message: "Access denied" });
 
-    const appointments = await Appointment.find({ userId }).populate(
-      "doctorId"
+    const appointments = await Appointment.find({ user: userId }).populate(
+      "doctor"
     );
     res.status(200).json(appointments);
   } catch (error) {
@@ -75,15 +71,11 @@ export const getByDoctorId = async (req, res) => {
   try {
     const { doctorId } = req.params;
 
-    // Doctors can only view their own appointments
-    if (req.user.role === "doctor" && req.user._id.toString() !== doctorId) {
-      return res
-        .status(403)
-        .json({ message: "Access denied: not your appointments" });
-    }
+    if (req.user.role === "doctor" && req.user._id.toString() !== doctorId)
+      return res.status(403).json({ message: "Access denied" });
 
-    const appointments = await Appointment.find({ doctorId }).populate(
-      "userId"
+    const appointments = await Appointment.find({ doctor: doctorId }).populate(
+      "user"
     );
     res.status(200).json(appointments);
   } catch (error) {
