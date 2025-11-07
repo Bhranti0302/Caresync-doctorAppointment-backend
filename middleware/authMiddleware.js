@@ -5,22 +5,23 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// ✅ Protect route (any logged-in user, doctor, or admin)
+/**
+ * ✅ Protect route middleware
+ * Works for all roles: user, doctor, and admin
+ */
 export const protect = async (req, res, next) => {
-  let token;
+  try {
+    let token;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
       token = req.headers.authorization.split(" ")[1];
-
-      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Try finding user in both collections
-      let user =
+      // Try finding in User or Doctor collection
+      const user =
         (await User.findById(decoded.id).select("-password")) ||
         (await Doctor.findById(decoded.id).select("-password"));
 
@@ -28,24 +29,27 @@ export const protect = async (req, res, next) => {
         return res.status(401).json({ message: "User not found" });
       }
 
-      req.user = user; // ✅ Attach to req.user
+      req.user = user; // ✅ Attach user info to request
       next();
-    } catch (error) {
-      console.error("Token verification failed:", error);
-      return res.status(401).json({ message: "Not authorized, token failed" });
+    } else {
+      return res.status(401).json({ message: "Not authorized, no token" });
     }
-  } else {
-    return res.status(401).json({ message: "Not authorized, no token" });
+  } catch (error) {
+    console.error("Auth middleware error:", error.message);
+    return res.status(401).json({ message: "Not authorized, token failed" });
   }
 };
 
-// ✅ Restrict access by role
+/**
+ * ✅ Role-based access control
+ * @param {...string} roles - allowed roles (e.g. "admin", "doctor", "user")
+ */
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ message: "Access denied: insufficient permissions" });
+      return res.status(403).json({
+        message: "Access denied: insufficient permissions",
+      });
     }
     next();
   };
