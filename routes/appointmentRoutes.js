@@ -3,47 +3,30 @@ import {
   bookingController,
   createAppointment,
   updateAppointment,
-  getByUserId,
-  getByDoctorId,
 } from "../controllers/bookingController.js";
-import { protect, authorize } from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Admin & Doctor can view all appointments
-router.get(
-  "/",
-  protect,
-  authorize("admin", "doctor"),
-  bookingController.getAll
-);
+// Get all appointments (for logged-in user)
+router.get("/", protect, bookingController.getAll);
 
-// ✅ Get appointments by user (patient) ID — must come BEFORE "/:id"
-router.get("/user/:userId", protect, authorize("user", "admin"), getByUserId);
-
-// ✅ Get appointments by doctor ID — must come BEFORE "/:id"
-router.get(
-  "/doctor/:doctorId",
-  protect,
-  authorize("doctor", "admin"),
-  getByDoctorId
-);
-
-// ✅ Get appointment by booking ID
+// Get appointment by ID
 router.get("/:id", protect, bookingController.getById);
 
-// ✅ Create a new appointment — only users (patients)
-router.post("/", protect, authorize("user"), createAppointment);
+// Get appointments by user ID
+router.get("/user/:userId", protect, bookingController.getByUserId);
 
-// ✅ Update appointment — only doctor or admin
-router.put("/:id", protect, authorize("doctor", "admin"), updateAppointment);
+// Get appointments by doctor ID
+router.get("/doctor/:doctorId", protect, bookingController.getByDoctorId);
 
-// ✅ Delete appointment — only admin
-router.delete(
-  "/:id",
-  protect,
-  authorize("admin"),
-  bookingController.deleteById
-);
+// Create new appointment
+router.post("/", protect, createAppointment);
+
+// Update appointment
+router.put("/:id", protect, updateAppointment);
+
+// Delete appointment
+router.delete("/:id", protect, bookingController.deleteById);
 
 export default router;

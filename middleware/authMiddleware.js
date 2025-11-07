@@ -7,7 +7,7 @@ dotenv.config();
 
 /**
  * ✅ Protect route middleware
- * Works for all roles: user, doctor, and admin
+ * Allows any logged-in user (user, doctor, or admin)
  */
 export const protect = async (req, res, next) => {
   try {
@@ -20,7 +20,7 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Try finding in User or Doctor collection
+      // Try finding user in both User and Doctor collections
       const user =
         (await User.findById(decoded.id).select("-password")) ||
         (await Doctor.findById(decoded.id).select("-password"));
@@ -41,16 +41,6 @@ export const protect = async (req, res, next) => {
 };
 
 /**
- * ✅ Role-based access control
- * @param {...string} roles - allowed roles (e.g. "admin", "doctor", "user")
+ * ❌ Removed role-based authorize middleware
+ * (not needed if all logged-in users can access)
  */
-export const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({
-        message: "Access denied: insufficient permissions",
-      });
-    }
-    next();
-  };
-};
