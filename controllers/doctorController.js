@@ -4,6 +4,7 @@ import { createBaseController } from "./baseController.js";
 
 export const doctorController = createBaseController(Doctor);
 
+// ✅ Add Doctor
 export const addDoctor = async (req, res) => {
   try {
     const {
@@ -18,28 +19,23 @@ export const addDoctor = async (req, res) => {
       address,
     } = req.body;
 
-    // Validation
     if (!name || !email || !password) {
       return res.status(400).json({
         message: "Name, email, and password are required",
       });
     }
 
-    // Check for existing doctor
     const existing = await Doctor.findOne({ email });
     if (existing) {
       return res.status(400).json({ message: "Doctor already exists" });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Image handling
     const imagePath = req.file
       ? `/uploads/${req.file.filename}`
       : "https://cdn-icons-png.flaticon.com/512/3774/3774299.png";
 
-    // Create new doctor
     const doctor = await Doctor.create({
       name,
       email,
@@ -60,5 +56,52 @@ export const addDoctor = async (req, res) => {
   } catch (error) {
     console.error("Error adding doctor:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ Update Doctor (Admin or Doctor can update)
+export const updateDoctorDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user; // comes from authMiddleware
+
+    const doctor = await Doctor.findById(id);
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    // 🔒 Only admin or the doctor themself can edit
+    if (
+      currentUser.role !== "admin" &&
+      doctor._id.toString() !== currentUser._id.toString()
+    ) {
+      return res.status(403).json({
+        message: "Not authorized to update this doctor",
+      });
+    }
+
+    // Update fields
+    const updates = {
+      name: req.body.name || doctor.name,
+      speciality: req.body.speciality || doctor.speciality,
+      degree: req.body.degree || doctor.degree,
+      experience: req.body.experience || doctor.experience,
+      about: req.body.about || doctor.about,
+      fees: req.body.fees || doctor.fees,
+      address: req.body.address || doctor.address,
+      image: req.file ? `/uploads/${req.file.filename}` : doctor.image,
+    };
+
+    const updatedDoctor = await Doctor.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
+
+    res.status(200).json({
+      message: "Doctor updated successfully",
+      doctor: updatedDoctor,
+    });
+  } catch (error) {
+    console.error("Error updating doctor:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

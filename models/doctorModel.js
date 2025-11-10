@@ -33,7 +33,7 @@ const doctorSchema = new mongoose.Schema(
     },
     about: {
       type: String,
-      maxlength: [200, "About section too long"],
+      maxlength: [2000, "About section too long"], // ✅ increased limit
       default: "",
     },
     fees: {
@@ -58,7 +58,6 @@ const doctorSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
