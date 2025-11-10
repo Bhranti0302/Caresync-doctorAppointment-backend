@@ -5,10 +5,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-/**
- * ✅ Protect route middleware
- * Allows any logged-in user (user, doctor, or admin)
- */
 export const protect = async (req, res, next) => {
   try {
     let token;
@@ -20,7 +16,6 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Try finding user in both User and Doctor collections
       const user =
         (await User.findById(decoded.id).select("-password")) ||
         (await Doctor.findById(decoded.id).select("-password"));
@@ -29,7 +24,14 @@ export const protect = async (req, res, next) => {
         return res.status(401).json({ message: "User not found" });
       }
 
-      req.user = user; // ✅ Attach user info to request
+      // ✅ Attach user info with role
+      req.user = {
+        id: user._id,
+        email: user.email,
+        role: user.role || "user", // ensure role exists
+        name: user.name,
+      };
+
       next();
     } else {
       return res.status(401).json({ message: "Not authorized, no token" });
@@ -39,8 +41,3 @@ export const protect = async (req, res, next) => {
     return res.status(401).json({ message: "Not authorized, token failed" });
   }
 };
-
-/**
- * ❌ Removed role-based authorize middleware
- * (not needed if all logged-in users can access)
- */

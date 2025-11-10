@@ -4,11 +4,10 @@ import {
   userController,
   updateUserProfile,
 } from "../controllers/userController.js";
-import { protect } from "../middleware/authMiddleware.js"; // ✅ removed authorize
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Only logged-in users can access these routes
 router.get("/", protect, userController.getAll);
 router.get("/:id", protect, userController.getById);
 router.put("/:id", protect, upload.single("image"), userController.updateById);

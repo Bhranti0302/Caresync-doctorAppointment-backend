@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/userModel.js";
 import Doctor from "../models/doctorModel.js";
@@ -17,8 +16,10 @@ export const registerUser = async (req, res) => {
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Create new user
     const newUser = await User.create({
       name,
       email,
@@ -27,7 +28,7 @@ export const registerUser = async (req, res) => {
       gender,
       address,
       phone,
-      role: role || "patient", // default role: patient
+      role: role || "patient", // Default role: patient
     });
 
     res.status(201).json({
@@ -50,40 +51,25 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ----------------- ADMIN LOGIN (env) -----------------
-    if (
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      const token = generateToken("admin-id"); // Fixed ID since admin is not in DB
-      return res.status(200).json({
-        message: "Admin login successful",
-        role: "admin",
-        token,
-        user: {
-          name: "Admin User",
-          email,
-          role: "admin",
-        },
-      });
-    }
-
-    // ----------------- DOCTOR / USER LOGIN -----------------
+    // Check if admin exists in DB
     let user = await User.findOne({ email });
     let role = "patient";
 
+    // If not found in users, check in doctors
     if (!user) {
       user = await Doctor.findOne({ email });
       role = "doctor";
     }
 
+    // If user not found, return error
     if (!user) return res.status(404).json({ message: "Account not found" });
 
     // Compare password
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch)
+      return res.status(401).json({ message: "Invalid credentials" });
 
-    // Determine role from DB
+    // Determine role
     if (user.role === "admin") role = "admin";
 
     res.status(200).json({
@@ -91,7 +77,12 @@ export const login = async (req, res) => {
         role.charAt(0).toUpperCase() + role.slice(1)
       } login successful`,
       role,
-      user,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role,
+      },
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -103,8 +94,8 @@ export const login = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
 
+    const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Generate reset token
@@ -118,9 +109,9 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 min expiry
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${process.env.BASE_URL}/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     const message = `
-      <h2>Reset Your Password</h2>
+      <h2>Password Reset Request</h2>
       <p>Click the link below to reset your password:</p>
       <a href="${resetUrl}" target="_blank">${resetUrl}</a>
       <p>This link expires in 15 minutes.</p>
@@ -154,12 +145,16 @@ export const resetPassword = async (req, res) => {
     });
 
     if (!user)
-      return res.status(400).json({ message: "Invalid or expired token" });
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired reset token" });
 
     const { password } = req.body;
+
     user.password = await bcrypt.hash(password, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
+
     await user.save();
 
     res.status(200).json({ message: "Password reset successful" });
