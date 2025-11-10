@@ -16,19 +16,29 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      const user =
+      // 🔍 Try to find user or doctor in DB
+      let user =
         (await User.findById(decoded.id).select("-password")) ||
         (await Doctor.findById(decoded.id).select("-password"));
+
+      // 🧩 Fallback for hardcoded admin
+      if (!user && decoded.id === "admin-id") {
+        user = {
+          _id: "admin-id",
+          name: "Admin User",
+          email: "admin@0320.com",
+          role: "admin",
+        };
+      }
 
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
 
-      // ✅ Attach user info with role
       req.user = {
         id: user._id,
         email: user.email,
-        role: user.role || "user", // ensure role exists
+        role: user.role || "user",
         name: user.name,
       };
 
