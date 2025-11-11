@@ -9,29 +9,19 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Diagnostic route logging
-router.post(
-  "/add",
-  (req, res, next) => {
-    console.log("🟢 Incoming /api/doctors/add request");
-    next();
-  },
-  protect,
-  (req, res, next) => {
-    console.log("🧩 After protect middleware:", req.user);
-    next();
-  },
-  upload.single("image"),
-  (req, res, next) => {
-    console.log("📸 File received in route:", req.file);
-    next();
-  },
-  addDoctor
-);
+// ✅ Add Doctor (with authentication and image upload)
+router.post("/add", protect, upload.single("image"), addDoctor);
 
+// ✅ Get all doctors
 router.get("/", doctorController.getAll);
+
+// ✅ Get doctor by ID
 router.get("/:id", doctorController.getById);
+
+// ✅ Update doctor details
 router.put("/:id", protect, upload.single("image"), updateDoctorDetails);
+
+// ✅ Delete doctor
 router.delete("/:id", protect, doctorController.deleteById);
 
 export default router;

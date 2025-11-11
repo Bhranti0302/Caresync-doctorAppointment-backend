@@ -1,164 +1,108 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import User from "../models/userModel.js";
 import Doctor from "../models/doctorModel.js";
-import { generateToken } from "../utils/generateToken.js";
-import { sendEmail } from "../utils/sendEmail.js";
 
-// ----------------- USER SIGNUP -----------------
+dotenv.config();
+
+// 🔑 Generate JWT token (no expiry)
+const generateToken = (id, role = "user") => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, { noTimestamp: true });
+};
+
+// ✅ REGISTER USER
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, age, gender, address, phone, role } =
-      req.body;
+    const { name, email, password, role = "user" } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ message: "User already exists" });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
 
-    // Hash password
+    const existingUser =
+      (await User.findOne({ email })) || (await Doctor.findOne({ email }));
+
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      age,
-      gender,
-      address,
-      phone,
-      role: role || "patient", // Default role: patient
-    });
+    const newUser =
+      role === "doctor"
+        ? await Doctor.create({ name, email, password: hashedPassword })
+        : await User.create({ name, email, password: hashedPassword });
+
+    const token = generateToken(newUser._id, role);
 
     res.status(201).json({
-      message: "User registered successfully",
+      message: "Registration successful",
+      token,
       user: {
-        _id: newUser._id,
+        id: newUser._id,
         name: newUser.name,
         email: newUser.email,
-        role: newUser.role,
-        token: generateToken(newUser._id),
+        role,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    console.error("❌ Register Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// ----------------- LOGIN -----------------
+// ✅ LOGIN
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check if admin exists in DB
-    let user = await User.findOne({ email });
-    let role = "patient";
+    const user =
+      (await User.findOne({ email })) || (await Doctor.findOne({ email }));
 
-    // If not found in users, check in doctors
     if (!user) {
-      user = await Doctor.findOne({ email });
-      role = "doctor";
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // If user not found, return error
-    if (!user) return res.status(404).json({ message: "Account not found" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
 
-    // Compare password
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatch)
-      return res.status(401).json({ message: "Invalid credentials" });
+    // detect admin
+    const role =
+      email === (process.env.ADMIN_EMAIL || "admin@0320.com")
+        ? "admin"
+        : user.role || "user";
 
-    // Determine role
-    if (user.role === "admin") role = "admin";
+    const token = generateToken(user._id, role);
 
     res.status(200).json({
-      message: `${
-        role.charAt(0).toUpperCase() + role.slice(1)
-      } login successful`,
-      role,
+      message: "Login successful",
+      token,
       user: {
-        _id: user._id,
+        id: user._id,
         name: user.name,
         email: user.email,
         role,
       },
-      token: generateToken(user._id),
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    console.error("❌ Login Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// ----------------- FORGOT PASSWORD -----------------
+// 💤 DUMMY Forgot Password (to prevent crash)
 export const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    // Generate reset token
-    const resetToken = crypto.randomBytes(20).toString("hex");
-    const resetTokenHash = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
-
-    user.resetPasswordToken = resetTokenHash;
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 min expiry
-    await user.save({ validateBeforeSave: false });
-
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    const message = `
-      <h2>Password Reset Request</h2>
-      <p>Click the link below to reset your password:</p>
-      <a href="${resetUrl}" target="_blank">${resetUrl}</a>
-      <p>This link expires in 15 minutes.</p>
-    `;
-
-    await sendEmail({
-      to: user.email,
-      subject: "Password Reset Request",
-      html: message,
-    });
-
-    res.status(200).json({ message: "Password reset email sent successfully" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Email could not be sent", error: error.message });
-  }
+  res.status(200).json({
+    message: "Forgot password endpoint is not implemented yet",
+  });
 };
 
-// ----------------- RESET PASSWORD -----------------
+// 💤 DUMMY Reset Password (to prevent crash)
 export const resetPassword = async (req, res) => {
-  try {
-    const resetTokenHash = crypto
-      .createHash("sha256")
-      .update(req.params.token)
-      .digest("hex");
-
-    const user = await User.findOne({
-      resetPasswordToken: resetTokenHash,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-
-    if (!user)
-      return res
-        .status(400)
-        .json({ message: "Invalid or expired reset token" });
-
-    const { password } = req.body;
-
-    user.password = await bcrypt.hash(password, 10);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-
-    await user.save();
-
-    res.status(200).json({ message: "Password reset successful" });
-  } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
-  }
+  res.status(200).json({
+    message: "Reset password endpoint is not implemented yet",
+  });
 };

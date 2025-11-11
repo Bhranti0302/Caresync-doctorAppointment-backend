@@ -32,9 +32,6 @@ export const addDoctor = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Check uploaded file
-    console.log("📸 Uploaded File:", req.file);
-
     // ✅ Get Cloudinary URL (if uploaded)
     const imagePath = req.file
       ? req.file.path // this is the Cloudinary URL
