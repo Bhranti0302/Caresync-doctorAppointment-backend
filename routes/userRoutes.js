@@ -1,21 +1,23 @@
 import express from "express";
 import upload from "../middleware/uploadMiddleware.js";
 import {
+  updateUserDetails,
   userController,
-  updateUserProfile,
 } from "../controllers/userController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", protect, userController.getAll);
+// ✅ Get all users
+router.get("/", userController.getAll);
 
-router.get("/:id", protect, userController.getById);
+// ✅ Get user by ID
+router.get("/:id", userController.getById);
 
-router.put("/:id", protect, upload.single("image"), userController.updateById);
+// ✅ Update user details (with image upload)
+router.put("/:id", protect, upload.single("image"), updateUserDetails);
 
-router.put("/profile", protect, upload.single("image"), updateUserProfile);
-
+// ✅ Delete user
 router.delete("/:id", protect, userController.deleteById);
 
 export default router;
