@@ -15,20 +15,19 @@ import doctorRoutes from "./routes/doctorRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 
 // -----------------------------------------------------------------------------
-// 1️⃣ Load environment-specific configuration
+// 1️⃣ Environment Configuration
 // -----------------------------------------------------------------------------
 dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
 
 // -----------------------------------------------------------------------------
-// 2️⃣ Initialize Express
+// 2️⃣ Express App Initialization
 // -----------------------------------------------------------------------------
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
 // -----------------------------------------------------------------------------
-// 3️⃣ Connect MongoDB
+// 3️⃣ MongoDB Connection
 // -----------------------------------------------------------------------------
 mongoose
   .connect(process.env.MONGO_URI)
@@ -38,11 +37,21 @@ mongoose
   .catch((err) => console.error("❌ MongoDB Connection Error:", err.message));
 
 // -----------------------------------------------------------------------------
-// 4️⃣ Static File Serving
+// 4️⃣ Serve Uploaded Images (IMPORTANT FOR RENDER)
 // -----------------------------------------------------------------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
+
+// ✅ Serve the /uploads folder publicly
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// ✅ Ensure uploads folder exists at runtime (avoids crash if missing)
+import fs from "fs";
+const uploadsPath = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath);
+  console.log("📁 'uploads' folder created automatically.");
+}
 
 // -----------------------------------------------------------------------------
 // 5️⃣ API Routes
@@ -57,20 +66,16 @@ app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
 // -----------------------------------------------------------------------------
-// 6️⃣ Error Handling Middleware
+// 6️⃣ Error Handling
 // -----------------------------------------------------------------------------
 app.use(notFound);
 app.use(errorHandler);
 
 // -----------------------------------------------------------------------------
-// 7️⃣ Server Listen
+// 7️⃣ Server Start
 // -----------------------------------------------------------------------------
 const PORT = process.env.PORT || 5000;
-const BASE_URL = process.env.BASE_URL;
 
 app.listen(PORT, () => {
-  console.log(
-    `🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
-  );
-  console.log(`🔗 Base URL: ${BASE_URL}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
