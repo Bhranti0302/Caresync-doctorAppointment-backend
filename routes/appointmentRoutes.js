@@ -1,23 +1,32 @@
 import express from "express";
 import {
-  getAll,
-  getById,
-  getByUserId,
-  getByDoctorId,
   createAppointment,
+  getAllAppointments,
+  getAppointmentById,
   updateAppointment,
-  deleteById,
+  deleteAppointment,
+  getAppointmentsByDoctor,
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", protect, getAll);
-router.get("/:id", protect, getById);
-router.get("/user/:userId", protect, getByUserId);
-router.get("/doctor/:doctorId", protect, getByDoctorId);
+// ✅ Create appointment (user only)
 router.post("/", protect, createAppointment);
+
+// ✅ Get all appointments (admin sees all, doctor sees their own, user sees own)
+router.get("/", protect, getAllAppointments);
+
+// ✅ Get appointment by ID
+router.get("/:id", protect, getAppointmentById);
+
+// ✅ Update appointment (doctor/admin only)
 router.put("/:id", protect, updateAppointment);
-router.delete("/:id", protect, deleteById);
+
+// ✅ Delete appointment (admin only)
+router.delete("/:id", protect, deleteAppointment);
+
+// ✅ Get appointments by doctor
+router.get("/doctor/:doctorId", protect, getAppointmentsByDoctor);
 
 export default router;
