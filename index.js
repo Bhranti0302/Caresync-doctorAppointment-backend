@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 // Middleware
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
@@ -18,6 +19,14 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 // 1️⃣ Environment Configuration
 // -----------------------------------------------------------------------------
 dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
+
+console.log("✅ Loaded ENV:", {
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+    ? "✅ Exists"
+    : "❌ Missing",
+});
 
 // -----------------------------------------------------------------------------
 // 2️⃣ Express App Initialization
@@ -45,8 +54,7 @@ const __dirname = path.dirname(__filename);
 // ✅ Serve the /uploads folder publicly
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ Ensure uploads folder exists at runtime (avoids crash if missing)
-import fs from "fs";
+// ✅ Ensure uploads folder exists
 const uploadsPath = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath);
@@ -60,6 +68,12 @@ app.get("/", (req, res) => {
   res.send("🚀 CareSync Backend Running Successfully!");
 });
 
+// ✅ Route logging for debugging
+app.use((req, res, next) => {
+  console.log(`➡️ ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
@@ -70,6 +84,21 @@ app.use("/api/appointments", appointmentRoutes);
 // -----------------------------------------------------------------------------
 app.use(notFound);
 app.use(errorHandler);
+
+// ✅ ENHANCED GLOBAL ERROR HANDLER (adds better logs)
+app.use((err, req, res, next) => {
+  console.error("🔥 GLOBAL ERROR HANDLER:");
+  console.error("➡️ Name:", err?.name);
+  console.error("➡️ Message:", err?.message);
+  console.error("➡️ Stack:", err?.stack);
+  console.error("➡️ Full Error Object:", err);
+
+  res.status(500).json({
+    success: false,
+    message: err?.message || "Something went wrong",
+    error: err,
+  });
+});
 
 // -----------------------------------------------------------------------------
 // 7️⃣ Server Start

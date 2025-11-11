@@ -1,33 +1,42 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
 
-// Ensure uploads folder exists
-const uploadDir = "uploads/";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+// ✅ Load correct environment file
+const envFile = `.env.${process.env.NODE_ENV || "development"}`;
+dotenv.config({ path: envFile });
 
-// Configure Storage
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename(req, file, cb) {
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${Date.now()}${ext}`);
+console.log(`🌍 Loaded environment: ${process.env.NODE_ENV || "development"}`);
+console.log("✅ Cloudinary ENV Check:", {
+  CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "❌ Missing",
+  API_KEY: process.env.CLOUDINARY_API_KEY ? "✅ Exists" : "❌ Missing",
+  API_SECRET: process.env.CLOUDINARY_API_SECRET ? "✅ Exists" : "❌ Missing",
+});
+
+// ✅ Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ✅ Cloudinary Storage
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    console.log("☁️ Uploading to Cloudinary...");
+    return {
+      folder: "CareSync/doctors",
+      resource_type: "image",
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+      transformation: [{ width: 500, height: 500, crop: "limit" }],
+      public_id: file.originalname.split(".")[0],
+    };
   },
 });
 
-// Allow only image types
-function fileFilter(req, file, cb) {
-  const allowed = /jpeg|jpg|png|webp/;
-  const ext = path.extname(file.originalname).toLowerCase();
-  const mime = allowed.test(file.mimetype);
-  if (mime && allowed.test(ext)) cb(null, true);
-  else cb(new Error("Only image files are allowed"));
-}
-
-const upload = multer({ storage, fileFilter });
+// ✅ Multer Middleware
+const upload = multer({ storage });
 
 export default upload;

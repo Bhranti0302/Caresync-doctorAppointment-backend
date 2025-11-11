@@ -31,12 +31,12 @@ userController.getAll = async (req, res) => {
       users,
     });
   } catch (error) {
-    console.error("Error in getAll:", error.message);
+    console.error("❌ Error in getAll:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// ✅ Update Profile
+// ✅ Update Profile (Cloudinary-Compatible)
 export const updateUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -46,11 +46,19 @@ export const updateUserProfile = async (req, res) => {
     user.email = req.body.email || user.email;
     user.phone = req.body.phone || user.phone;
     user.address = req.body.address || user.address;
-    user.image = req.file ? `/uploads/${req.file.filename}` : user.image;
+
+    if (req.file && req.file.path) {
+      user.image = req.file.path;
+    }
 
     const updatedUser = await user.save();
-    res.json({ message: "Profile updated", user: updatedUser });
+
+    res.json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Error updating profile:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

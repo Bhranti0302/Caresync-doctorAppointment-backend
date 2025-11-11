@@ -4,7 +4,7 @@ import { createBaseController } from "./baseController.js";
 
 export const doctorController = createBaseController(Doctor);
 
-// ✅ Add Doctor
+// ✅ Add Doctor (Cloudinary Compatible)
 export const addDoctor = async (req, res) => {
   try {
     const {
@@ -20,9 +20,9 @@ export const addDoctor = async (req, res) => {
     } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "Name, email, and password are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "Name, email, and password are required" });
     }
 
     const existing = await Doctor.findOne({ email });
@@ -32,8 +32,12 @@ export const addDoctor = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // ✅ Check uploaded file
+    console.log("📸 Uploaded File:", req.file);
+
+    // ✅ Get Cloudinary URL (if uploaded)
     const imagePath = req.file
-      ? `/uploads/${req.file.filename}`
+      ? req.file.path // this is the Cloudinary URL
       : "https://cdn-icons-png.flaticon.com/512/3774/3774299.png";
 
     const doctor = await Doctor.create({
@@ -54,33 +58,36 @@ export const addDoctor = async (req, res) => {
       doctor,
     });
   } catch (error) {
-    console.error("Error adding doctor:", error);
-    res.status(500).json({ message: error.message });
+    console.error("❌ Error adding doctor:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error?.message || JSON.stringify(error),
+    });
   }
 };
 
-// ✅ Update Doctor (Admin or Doctor can update)
+// ✅ Update Doctor (Cloudinary Compatible)
 export const updateDoctorDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const currentUser = req.user; // comes from authMiddleware
+    const currentUser = req.user;
 
     const doctor = await Doctor.findById(id);
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    // 🔒 Only admin or the doctor themself can edit
     if (
       currentUser.role !== "admin" &&
       doctor._id.toString() !== currentUser._id.toString()
     ) {
-      return res.status(403).json({
-        message: "Not authorized to update this doctor",
-      });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to update this doctor" });
     }
 
-    // Update fields
+    console.log("📸 Uploaded File (Update):", req.file);
+
     const updates = {
       name: req.body.name || doctor.name,
       speciality: req.body.speciality || doctor.speciality,
@@ -89,7 +96,7 @@ export const updateDoctorDetails = async (req, res) => {
       about: req.body.about || doctor.about,
       fees: req.body.fees || doctor.fees,
       address: req.body.address || doctor.address,
-      image: req.file ? `/uploads/${req.file.filename}` : doctor.image,
+      image: req.file ? req.file.path : doctor.image, // ✅ Cloudinary URL
     };
 
     const updatedDoctor = await Doctor.findByIdAndUpdate(id, updates, {
@@ -101,7 +108,10 @@ export const updateDoctorDetails = async (req, res) => {
       doctor: updatedDoctor,
     });
   } catch (error) {
-    console.error("Error updating doctor:", error.message);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("❌ Error updating doctor:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error?.message || JSON.stringify(error),
+    });
   }
 };
