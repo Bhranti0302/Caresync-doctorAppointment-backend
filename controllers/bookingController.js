@@ -32,13 +32,11 @@ export const createAppointment = async (req, res) => {
     });
 
     // Populate doctor and user
-    const populatedAppointment = await Appointment.findById(newAppointment._id)
-      .populate("doctor")
-      .populate("user");
+    await newAppointment.populate("doctor").populate("user");
 
     res.status(201).json({
       message: "Appointment created successfully",
-      appointment: populatedAppointment,
+      appointment: newAppointment,
     });
   } catch (error) {
     console.error("❌ Error creating appointment:", error);
@@ -95,27 +93,45 @@ export const getAppointmentById = async (req, res) => {
 // -------------------- UPDATE APPOINTMENT (Doctor/Admin Only) --------------------
 export const updateAppointment = async (req, res) => {
   try {
+    const updates = req.body; // all fields sent in body
+
     if (!["doctor", "admin"].includes(req.user.role)) {
       return res
         .status(403)
         .json({ message: "Only doctor or admin can update appointment" });
     }
 
-    const { status } = req.body;
-
-    const updatedAppointment = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    )
-      .populate("doctor")
-      .populate("user");
-
-    if (!updatedAppointment)
+    // Fetch the appointment
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
+    }
 
-    res.status(200).json(updatedAppointment);
+    // If doctor, ensure they can only update their own appointments
+    if (
+      req.user.role === "doctor" &&
+      appointment.doctor.toString() !== req.user.id
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Doctor can only update their own appointments" });
+    }
+
+    // Apply updates dynamically
+    Object.keys(updates).forEach((key) => {
+      appointment[key] = updates[key];
+    });
+
+    // Save the updated appointment
+    await appointment.save();
+
+    // Populate doctor and user for response
+    await appointment.populate("doctor");
+    await appointment.populate("user");
+
+    res.status(200).json(appointment);
   } catch (error) {
+    console.error("❌ Error updating appointment:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
