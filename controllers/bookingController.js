@@ -9,10 +9,11 @@ export const createAppointment = async (req, res) => {
   try {
     const { doctor, date, time, reason } = req.body;
 
-    if (req.user.role !== "patient") {
+    // ✅ Allow both "patient" and "user" roles to book
+    if (!["patient", "user"].includes(req.user.role)) {
       return res
         .status(403)
-        .json({ message: "Only patients can book appointments" });
+        .json({ message: "Only patients or users can book appointments" });
     }
 
     const doctorData = await Doctor.findById(doctor);
