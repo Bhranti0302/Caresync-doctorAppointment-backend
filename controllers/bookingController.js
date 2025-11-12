@@ -9,7 +9,6 @@ export const createAppointment = async (req, res) => {
   try {
     const { doctor, date, time, reason } = req.body;
 
-    // ✅ Allow both "patient" and "user" roles to book
     if (!["patient", "user"].includes(req.user.role)) {
       return res
         .status(403)
@@ -20,10 +19,9 @@ export const createAppointment = async (req, res) => {
     if (!doctorData)
       return res.status(404).json({ message: "Doctor not found" });
 
-    // ✅ Create appointment
     const newAppointment = await Appointment.create({
       doctor: doctorData._id,
-      user: req.user._id, // changed from req.user.id to _id
+      user: req.user._id || req.user.id, // ✅ Use either _id or id
       date,
       time,
       reason,
@@ -31,11 +29,10 @@ export const createAppointment = async (req, res) => {
       status: "pending",
     });
 
-    // ✅ Safe populate (won’t crash if something is wrong)
     try {
       await newAppointment.populate("doctor user");
     } catch (err) {
-      console.warn("⚠️ Populate failed, sending raw appointment:", err.message);
+      console.warn("⚠️ Populate failed:", err.message);
     }
 
     res.status(201).json({
@@ -51,16 +48,17 @@ export const createAppointment = async (req, res) => {
 // -------------------- GET ALL APPOINTMENTS --------------------
 export const getAllAppointments = async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     let appointments;
 
     if (req.user.role === "admin") {
       appointments = await Appointment.find().populate("doctor user");
     } else if (req.user.role === "doctor") {
-      appointments = await Appointment.find({ doctor: req.user.id }).populate(
+      appointments = await Appointment.find({ doctor: userId }).populate(
         "doctor user"
       );
     } else {
-      appointments = await Appointment.find({ user: req.user.id }).populate(
+      appointments = await Appointment.find({ user: userId }).populate(
         "doctor user"
       );
     }
@@ -74,6 +72,7 @@ export const getAllAppointments = async (req, res) => {
 // -------------------- GET APPOINTMENT BY ID --------------------
 export const getAppointmentById = async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const appointment = await Appointment.findById(req.params.id).populate(
       "doctor user"
     );
@@ -82,7 +81,7 @@ export const getAppointmentById = async (req, res) => {
 
     if (
       req.user.role === "patient" &&
-      appointment.user._id.toString() !== req.user.id
+      appointment.user.toString() !== userId.toString()
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -97,6 +96,7 @@ export const getAppointmentById = async (req, res) => {
 export const updateAppointment = async (req, res) => {
   try {
     const updates = req.body;
+    const userId = req.user._id || req.user.id;
 
     if (!["doctor", "admin"].includes(req.user.role)) {
       return res
@@ -110,7 +110,7 @@ export const updateAppointment = async (req, res) => {
 
     if (
       req.user.role === "doctor" &&
-      appointment.doctor.toString() !== req.user.id
+      appointment.doctor.toString() !== userId.toString()
     ) {
       return res
         .status(403)
@@ -134,14 +134,18 @@ export const updateAppointment = async (req, res) => {
 // -------------------- DELETE APPOINTMENT --------------------
 export const deleteAppointment = async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment)
       return res.status(404).json({ message: "Appointment not found" });
 
-    if (req.user.role !== "admin") {
+    if (
+      req.user.role !== "admin" &&
+      appointment.user.toString() !== userId.toString()
+    ) {
       return res
         .status(403)
-        .json({ message: "Only admin can delete appointments" });
+        .json({ message: "You are not allowed to cancel this appointment" });
     }
 
     await Appointment.findByIdAndDelete(req.params.id);
