@@ -21,15 +21,19 @@ export const createAppointment = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
 
     const newAppointment = await Appointment.create({
-      doctor: new ObjectId(doctor),
-      user: new ObjectId(req.user.id),
+      doctor: doctorData._id,
+      user: req.user._id,
       date,
       time,
       reason,
       fees: doctorData.fees,
     });
 
-    await newAppointment.populate("doctor").populate("user");
+    try {
+      await newAppointment.populate("doctor user");
+    } catch (err) {
+      console.warn("⚠️ Populate failed, returning raw document:", err.message);
+    }
 
     res.status(201).json({
       message: "Appointment created successfully",
