@@ -5,28 +5,32 @@ import {
   getAppointmentById,
   updateAppointment,
   deleteAppointment,
-  getAppointmentsByDoctor,
+  getAppointmentsByDoctorId,
+  getAppointmentsByUserId,
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Create appointment (user only)
+// Create appointment
 router.post("/", protect, createAppointment);
 
-// ✅ Get all appointments (admin sees all, doctor sees their own, user sees own)
+// Get all appointments
 router.get("/", protect, getAllAppointments);
 
-// ✅ Get appointment by ID
+// Get appointment by ID
 router.get("/:id", protect, getAppointmentById);
 
-// ✅ Update appointment (doctor/admin only)
+// Get appointments by doctor ID
+router.get("/doctor/:doctorId", protect, getAppointmentsByDoctorId);
+
+// Get appointments by user ID
+router.get("/user/:userId", protect, getAppointmentsByUserId);
+
+// Update appointment
 router.put("/:id", protect, updateAppointment);
 
-// ✅ Delete appointment (admin only)
+// Delete appointment
 router.delete("/:id", protect, deleteAppointment);
-
-// ✅ Get appointments by doctor
-router.get("/doctor/:doctorId", protect, getAppointmentsByDoctor);
 
 export default router;
