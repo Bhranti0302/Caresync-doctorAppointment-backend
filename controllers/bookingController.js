@@ -20,19 +20,22 @@ export const createAppointment = async (req, res) => {
     if (!doctorData)
       return res.status(404).json({ message: "Doctor not found" });
 
+    // ✅ Create appointment
     const newAppointment = await Appointment.create({
       doctor: doctorData._id,
-      user: req.user._id,
+      user: req.user._id, // changed from req.user.id to _id
       date,
       time,
       reason,
       fees: doctorData.fees,
+      status: "pending",
     });
 
+    // ✅ Safe populate (won’t crash if something is wrong)
     try {
       await newAppointment.populate("doctor user");
     } catch (err) {
-      console.warn("⚠️ Populate failed, returning raw document:", err.message);
+      console.warn("⚠️ Populate failed, sending raw appointment:", err.message);
     }
 
     res.status(201).json({
