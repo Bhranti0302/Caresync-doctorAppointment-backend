@@ -1,3 +1,4 @@
+// controllers/baseController.js
 export const createBaseController = (Model, populateOptions = []) => ({
   getAll: async (req, res) => {
     try {
@@ -12,13 +13,12 @@ export const createBaseController = (Model, populateOptions = []) => ({
 
   getById: async (req, res) => {
     try {
-      let query = Model.findById(req.params.id);
-      populateOptions.forEach((opt) => (query = query.populate(opt)));
-      const data = await query;
-      if (!data) return res.status(404).json({ message: "Not found" });
-      res.status(200).json(data);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+      const { id } = req.params;
+      const doc = await Model.findById(id);
+      if (!doc) return res.status(404).json({ message: "Not found" });
+      res.status(200).json({ user: doc });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
     }
   },
 
@@ -26,12 +26,10 @@ export const createBaseController = (Model, populateOptions = []) => ({
     try {
       const updateData = { ...req.body };
 
-      // Handle uploaded image
       if (req.file) {
         updateData.image = `/uploads/${req.file.filename}`;
       }
 
-      // Handle nested address from form-data (like address[line1])
       if (req.body["address[line1]"] || req.body["address[line2]"]) {
         updateData.address = {
           line1: req.body["address[line1]"] || "",
@@ -39,10 +37,7 @@ export const createBaseController = (Model, populateOptions = []) => ({
         };
       }
 
-      // Prevent password from being overwritten accidentally
-      if (updateData.password) {
-        delete updateData.password;
-      }
+      if (updateData.password) delete updateData.password;
 
       const updated = await Model.findByIdAndUpdate(req.params.id, updateData, {
         new: true,

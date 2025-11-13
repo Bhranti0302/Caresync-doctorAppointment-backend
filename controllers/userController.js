@@ -2,9 +2,10 @@ import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import { createBaseController } from "./baseController.js";
 
+// ✅ Base controller for generic CRUD
 export const userController = createBaseController(User);
 
-// ✅ Add User (Cloudinary Compatible)
+// ✅ Add new user
 export const addUser = async (req, res) => {
   try {
     const { name, email, password, phone, address, role } = req.body;
@@ -22,7 +23,6 @@ export const addUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Cloudinary image (or default)
     const imagePath = req.file
       ? req.file.path
       : "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
@@ -43,22 +43,21 @@ export const addUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error adding user:", error);
-    res.status(500).json({
-      message: "Server error",
-      error: error?.message || JSON.stringify(error),
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ Update User (Cloudinary Compatible)
+// ✅ Update user details (secure + consistent)
 export const updateUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
     const currentUser = req.user;
 
+    // Fetch target user
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Only admin or self can update
     if (
       currentUser.role !== "admin" &&
       user._id.toString() !== currentUser.id.toString()
@@ -68,17 +67,26 @@ export const updateUserDetails = async (req, res) => {
 
     const updates = { ...req.body };
 
+    // Handle image update
     if (req.file) {
       updates.image = req.file.path;
     }
 
-    // prevent password overwrite
+    // Handle nested address
+    if (req.body["address[line1]"] || req.body["address[line2]"]) {
+      updates.address = {
+        line1: req.body["address[line1]"] || "",
+        line2: req.body["address[line2]"] || "",
+      };
+    }
+
+    // Prevent password overwrite
     delete updates.password;
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, {
       new: true,
       runValidators: true,
-    });
+    }).select("-password");
 
     res.status(200).json({
       message: "User updated successfully",

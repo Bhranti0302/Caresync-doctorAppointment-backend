@@ -1,23 +1,21 @@
 import express from "express";
-import upload from "../middleware/uploadMiddleware.js";
-import {
-  updateUserDetails,
-  userController,
-} from "../controllers/userController.js";
+import multer from "multer";
 import { protect } from "../middleware/authMiddleware.js";
+import {
+  addUser,
+  userController,
+  updateUserDetails,
+} from "../controllers/userController.js";
 
 const router = express.Router();
 
-// ✅ Get all users
-router.get("/", userController.getAll);
+const upload = multer({ dest: "uploads/" });
 
-// ✅ Get user by ID
-router.get("/:id", userController.getById);
-
-// ✅ Update user details (with image upload)
+// ✅ Routes
+router.get("/", protect, userController.getAll);
+router.get("/:id", protect, userController.getById);
+router.post("/", upload.single("image"), addUser);
 router.put("/:id", protect, upload.single("image"), updateUserDetails);
-
-// ✅ Delete user
 router.delete("/:id", protect, userController.deleteById);
 
 export default router;
