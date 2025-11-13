@@ -22,7 +22,13 @@ const userSchema = new mongoose.Schema(
     },
     age: { type: Number, min: [0, "Age must be positive"] },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
-    address: { type: String, default: "India" },
+
+    // ✅ Updated address field
+    address: {
+      line1: { type: String, default: "" },
+      line2: { type: String, default: "" },
+    },
+
     phone: { type: String, default: "+91 00000 00000" },
     role: {
       type: String,
