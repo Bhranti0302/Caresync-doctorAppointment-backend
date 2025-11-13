@@ -57,31 +57,27 @@ export const updateUserDetails = async (req, res) => {
     const currentUser = req.user;
 
     const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Only admin or the same user can update
     if (
       currentUser.role !== "admin" &&
       user._id.toString() !== currentUser.id.toString()
     ) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to update this user" });
+      return res.status(403).json({ message: "Not authorized" });
     }
 
-    const updates = {
-      name: req.body.name || user.name,
-      email: req.body.email || user.email,
-      phone: req.body.phone || user.phone,
-      address: req.body.address || user.address,
-      role: req.body.role || user.role,
-      image: req.file ? req.file.path : user.image,
-    };
+    const updates = { ...req.body };
+
+    if (req.file) {
+      updates.image = req.file.path;
+    }
+
+    // prevent password overwrite
+    delete updates.password;
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, {
       new: true,
+      runValidators: true,
     });
 
     res.status(200).json({
@@ -90,9 +86,6 @@ export const updateUserDetails = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error updating user:", error);
-    res.status(500).json({
-      message: "Server error",
-      error: error?.message || JSON.stringify(error),
-    });
+    res.status(500).json({ message: error.message });
   }
 };

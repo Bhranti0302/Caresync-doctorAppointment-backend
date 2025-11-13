@@ -87,11 +87,11 @@ app.use(errorHandler);
 
 // ✅ ENHANCED GLOBAL ERROR HANDLER (adds better logs)
 app.use((err, req, res, next) => {
-  console.error("🔥 GLOBAL ERROR HANDLER:");
-  console.error("➡️ Name:", err?.name);
-  console.error("➡️ Message:", err?.message);
-  console.error("➡️ Stack:", err?.stack);
-  console.error("➡️ Full Error Object:", err);
+  // console.error("🔥 GLOBAL ERROR HANDLER:");
+  // console.error("➡️ Name:", err?.name);
+  // console.error("➡️ Message:", err?.message);
+  // console.error("➡️ Stack:", err?.stack);
+  // console.error("➡️ Full Error Object:", err);
 
   res.status(500).json({
     success: false,
