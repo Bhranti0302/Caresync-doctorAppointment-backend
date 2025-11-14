@@ -53,11 +53,9 @@ export const updateUserDetails = async (req, res) => {
     const { id } = req.params;
     const currentUser = req.user;
 
-    // Fetch target user
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Only admin or self can update
     if (
       currentUser.role !== "admin" &&
       user._id.toString() !== currentUser.id.toString()
@@ -67,12 +65,17 @@ export const updateUserDetails = async (req, res) => {
 
     const updates = { ...req.body };
 
-    // Handle image update
+    // -------------------------------
+    // 🔹 Upload image to Cloudinary
+    // -------------------------------
     if (req.file) {
-      updates.image = req.file.path;
+      const cloudUpload = await cloudinary.uploader.upload(req.file.path, {
+        folder: "caresync_users",
+      });
+      updates.image = cloudUpload.secure_url;
     }
 
-    // Handle nested address
+    // 🔹 Address parse
     if (req.body["address[line1]"] || req.body["address[line2]"]) {
       updates.address = {
         line1: req.body["address[line1]"] || "",
@@ -80,7 +83,6 @@ export const updateUserDetails = async (req, res) => {
       };
     }
 
-    // Prevent password overwrite
     delete updates.password;
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, {
@@ -93,7 +95,7 @@ export const updateUserDetails = async (req, res) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("❌ Error updating user:", error);
+    console.error("Error updating user:", error);
     res.status(500).json({ message: error.message });
   }
 };
