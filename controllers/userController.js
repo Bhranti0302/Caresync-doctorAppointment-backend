@@ -1,11 +1,14 @@
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import { createBaseController } from "./baseController.js";
+import { v2 as cloudinary } from "cloudinary";
 
 // ✅ Base controller for generic CRUD
 export const userController = createBaseController(User);
 
+// ===============================
 // ✅ Add new user
+// ===============================
 export const addUser = async (req, res) => {
   try {
     const { name, email, password, phone, address, role } = req.body;
@@ -47,7 +50,9 @@ export const addUser = async (req, res) => {
   }
 };
 
-// ✅ Update user details (secure + consistent)
+// ===============================
+// ✅ Update user profile
+// ===============================
 export const updateUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
@@ -56,6 +61,7 @@ export const updateUserDetails = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // 🔐 Permission check
     if (
       currentUser.role !== "admin" &&
       user._id.toString() !== currentUser.id.toString()
@@ -69,13 +75,16 @@ export const updateUserDetails = async (req, res) => {
     // 🔹 Upload image to Cloudinary
     // -------------------------------
     if (req.file) {
+      console.log("☁️ Uploading image to Cloudinary...");
+
       const cloudUpload = await cloudinary.uploader.upload(req.file.path, {
-        folder: "caresync_users",
+        folder: "CareSync/users",
       });
+
       updates.image = cloudUpload.secure_url;
     }
 
-    // 🔹 Address parse
+    // 🔹 Handle Address object
     if (req.body["address[line1]"] || req.body["address[line2]"]) {
       updates.address = {
         line1: req.body["address[line1]"] || "",
@@ -83,6 +92,7 @@ export const updateUserDetails = async (req, res) => {
       };
     }
 
+    // Password should not be updated here
     delete updates.password;
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, {
@@ -95,7 +105,7 @@ export const updateUserDetails = async (req, res) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("Error updating user:", error);
+    console.error("❌ Error updating user:", error);
     res.status(500).json({ message: error.message });
   }
 };
