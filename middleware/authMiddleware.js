@@ -7,15 +7,8 @@ dotenv.config();
 
 export const protect = async (req, res, next) => {
   try {
-    let token;
-
-    // 1️⃣ Extract token
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    // 1️⃣ Read token from cookie
+    const token = req.cookies?.token;
 
     if (!token) {
       return res.status(401).json({ message: "Not authorized, no token" });
@@ -29,13 +22,13 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
 
-    // 3️⃣ Lookup user in DB
+    // 3️⃣ Find user in DB (User or Doctor)
     let user =
       (await User.findById(decoded.id).select("-password")) ||
       (await Doctor.findById(decoded.id).select("-password"));
 
-    // 4️⃣ Fallback for hardcoded admin
-    if (!user && decoded.id === "admin-id") {
+    // 4️⃣ Hardcoded admin fallback (optional)
+    if (!user && decoded.role === "admin") {
       user = {
         _id: "admin-id",
         name: "Admin User",
@@ -48,10 +41,10 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // 5️⃣ Attach to req.user
+    // 5️⃣ Attach clean user info to request
     req.user = {
-      _id: user._id.toString(),
-      id: user._id.toString(),
+      _id: user._id?.toString(),
+      id: user._id?.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
@@ -60,6 +53,6 @@ export const protect = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
-    return res.status(401).json({ message: "Not authorized, token failed" });
+    return res.status(401).json({ message: "Not authorized" });
   }
 };
