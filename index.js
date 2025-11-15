@@ -1,3 +1,4 @@
+// server.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -21,32 +22,40 @@ dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
 
 const app = express();
 
-// ---- MIDDLEWARE ----
+// -------------------- MIDDLEWARE --------------------
 app.use(express.json());
 app.use(cookieParser());
 
+// CORS setup for multiple origins (e.g., Vite dev server)
+const allowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
+
 app.use(
   cors({
-    origin: "http://localhost:3000", // Your frontend
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // allow non-browser requests (Postman)
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
   })
 );
 
-// ---- DATABASE ----
+// -------------------- DATABASE --------------------
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("DB Error:", err.message));
 
-// ---- STATIC UPLOADS ----
+// -------------------- STATIC UPLOADS --------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+app.use("/uploads", express.static(uploadsDir));
 
-// ---- ROUTES ----
+// -------------------- ROUTES --------------------
 app.get("/", (req, res) => res.send("Backend Running!"));
 
 app.use("/api/auth", authRoutes);
@@ -54,10 +63,10 @@ app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// ---- ERROR HANDLERS ----
+// -------------------- ERROR HANDLERS --------------------
 app.use(notFound);
 app.use(errorHandler);
 
-// ---- START SERVER ----
+// -------------------- START SERVER --------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));

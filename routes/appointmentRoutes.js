@@ -12,25 +12,25 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// 🟢 Create appointment
+//  Create appointment (user only)
 router.post("/", protect, createAppointment);
 
-// 🟢 Get all appointments
-router.get("/", protect, getAllAppointments);
-
-// 🟢 Get appointments by doctor ID
+// Get appointments by doctor ID
 router.get("/doctor/:doctorId", protect, getAppointmentsByDoctorId);
 
-// 🟢 Get appointments by user ID
+//  Get appointments by user ID
 router.get("/user/:userId", protect, getAppointmentsByUserId);
 
-// 🟢 Get appointment by appointment ID
+//  Get appointment by appointment ID
 router.get("/:id", protect, getAppointmentById);
 
-// 🟢 Update appointment
+//  Get all appointments (admin/doctor/user filtered)
+router.get("/", protect, getAllAppointments);
+
+// Update appointment (doctor/admin only)
 router.put("/:id", protect, updateAppointment);
 
-// 🟢 Delete appointment
+//  Delete appointment (user/admin)
 router.delete("/:id", protect, deleteAppointment);
 
 export default router;

@@ -7,12 +7,12 @@ import dotenv from "dotenv";
 const envFile = `.env.${process.env.NODE_ENV || "development"}`;
 dotenv.config({ path: envFile });
 
-console.log(`🌍 Loaded environment: ${process.env.NODE_ENV || "development"}`);
-console.log("✅ Cloudinary ENV Check:", {
-  CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "❌ Missing",
-  API_KEY: process.env.CLOUDINARY_API_KEY ? "✅ Exists" : "❌ Missing",
-  API_SECRET: process.env.CLOUDINARY_API_SECRET ? "✅ Exists" : "❌ Missing",
-});
+// console.log(`🌍 Loaded environment: ${process.env.NODE_ENV || "development"}`);
+// console.log("✅ Cloudinary ENV Check:", {
+//   CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "❌ Missing",
+//   API_KEY: process.env.CLOUDINARY_API_KEY ? "✅ Exists" : "❌ Missing",
+//   API_SECRET: process.env.CLOUDINARY_API_SECRET ? "✅ Exists" : "❌ Missing",
+// });
 
 // ✅ Cloudinary Configuration
 cloudinary.config({

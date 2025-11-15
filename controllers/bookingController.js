@@ -9,10 +9,14 @@ export const createAppointment = async (req, res) => {
   try {
     const { doctor, date, time, reason } = req.body;
 
-    if (!["patient", "user"].includes(req.user.role)) {
+    if (req.user.role !== "user") {
       return res
         .status(403)
-        .json({ message: "Only patients or users can book appointments" });
+        .json({ message: "Only users can book appointments" });
+    }
+
+    if (!ObjectId.isValid(doctor)) {
+      return res.status(400).json({ message: "Invalid doctor ID" });
     }
 
     const doctorData = await Doctor.findById(doctor);
@@ -21,7 +25,7 @@ export const createAppointment = async (req, res) => {
 
     const newAppointment = await Appointment.create({
       doctor: doctorData._id,
-      user: req.user._id || req.user.id, // ✅ Use either _id or id
+      user: req.user._id,
       date,
       time,
       reason,
@@ -29,11 +33,7 @@ export const createAppointment = async (req, res) => {
       status: "pending",
     });
 
-    try {
-      await newAppointment.populate("doctor user");
-    } catch (err) {
-      console.warn("⚠️ Populate failed:", err.message);
-    }
+    await newAppointment.populate("doctor user");
 
     res.status(201).json({
       message: "Appointment created successfully",
@@ -48,9 +48,9 @@ export const createAppointment = async (req, res) => {
 // -------------------- GET ALL APPOINTMENTS --------------------
 export const getAllAppointments = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
-    let appointments;
+    const userId = req.user._id;
 
+    let appointments;
     if (req.user.role === "admin") {
       appointments = await Appointment.find().populate("doctor user");
     } else if (req.user.role === "doctor") {
@@ -65,6 +65,7 @@ export const getAllAppointments = async (req, res) => {
 
     res.status(200).json(appointments);
   } catch (error) {
+    console.error("❌ Error getting appointments:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -72,22 +73,37 @@ export const getAllAppointments = async (req, res) => {
 // -------------------- GET APPOINTMENT BY ID --------------------
 export const getAppointmentById = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
-    const appointment = await Appointment.findById(req.params.id).populate(
+    const appointmentId = req.params.id;
+    const userId = req.user._id;
+
+    if (!ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ message: "Invalid appointment ID" });
+    }
+
+    const appointment = await Appointment.findById(appointmentId).populate(
       "doctor user"
     );
     if (!appointment)
       return res.status(404).json({ message: "Appointment not found" });
 
+    // Only the user who booked, doctor, or admin can view
     if (
-      req.user.role === "patient" &&
-      appointment.user.toString() !== userId.toString()
+      req.user.role === "user" &&
+      appointment.user._id.toString() !== userId.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (
+      req.user.role === "doctor" &&
+      appointment.doctor._id.toString() !== userId.toString()
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
     res.status(200).json(appointment);
   } catch (error) {
+    console.error("❌ Error getting appointment by ID:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -95,16 +111,21 @@ export const getAppointmentById = async (req, res) => {
 // -------------------- UPDATE APPOINTMENT --------------------
 export const updateAppointment = async (req, res) => {
   try {
+    const appointmentId = req.params.id;
     const updates = req.body;
-    const userId = req.user._id || req.user.id;
+    const userId = req.user._id;
+
+    if (!ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ message: "Invalid appointment ID" });
+    }
 
     if (!["doctor", "admin"].includes(req.user.role)) {
       return res
         .status(403)
-        .json({ message: "Only doctor or admin can update appointment" });
+        .json({ message: "Only doctor or admin can update appointments" });
     }
 
-    const appointment = await Appointment.findById(req.params.id);
+    const appointment = await Appointment.findById(appointmentId);
     if (!appointment)
       return res.status(404).json({ message: "Appointment not found" });
 
@@ -124,7 +145,10 @@ export const updateAppointment = async (req, res) => {
     await appointment.save();
     await appointment.populate("doctor user");
 
-    res.status(200).json(appointment);
+    res.status(200).json({
+      message: "Appointment updated successfully",
+      appointment,
+    });
   } catch (error) {
     console.error("❌ Error updating appointment:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -134,8 +158,14 @@ export const updateAppointment = async (req, res) => {
 // -------------------- DELETE APPOINTMENT --------------------
 export const deleteAppointment = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
-    const appointment = await Appointment.findById(req.params.id);
+    const appointmentId = req.params.id;
+    const userId = req.user._id;
+
+    if (!ObjectId.isValid(appointmentId)) {
+      return res.status(400).json({ message: "Invalid appointment ID" });
+    }
+
+    const appointment = await Appointment.findById(appointmentId);
     if (!appointment)
       return res.status(404).json({ message: "Appointment not found" });
 
@@ -148,9 +178,10 @@ export const deleteAppointment = async (req, res) => {
         .json({ message: "You are not allowed to cancel this appointment" });
     }
 
-    await Appointment.findByIdAndDelete(req.params.id);
+    await Appointment.findByIdAndDelete(appointmentId);
     res.status(200).json({ message: "Appointment deleted successfully" });
   } catch (error) {
+    console.error("❌ Error deleting appointment:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -158,12 +189,17 @@ export const deleteAppointment = async (req, res) => {
 // -------------------- GET APPOINTMENTS BY DOCTOR ID --------------------
 export const getAppointmentsByDoctorId = async (req, res) => {
   try {
-    const appointments = await Appointment.find({
-      doctor: req.params.doctorId,
-    }).populate("doctor user");
+    const doctorId = req.params.doctorId;
+    if (!ObjectId.isValid(doctorId)) {
+      return res.status(400).json({ message: "Invalid doctor ID" });
+    }
 
+    const appointments = await Appointment.find({ doctor: doctorId }).populate(
+      "doctor user"
+    );
     res.status(200).json(appointments);
   } catch (error) {
+    console.error("❌ Error getting appointments by doctor ID:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -171,12 +207,17 @@ export const getAppointmentsByDoctorId = async (req, res) => {
 // -------------------- GET APPOINTMENTS BY USER ID --------------------
 export const getAppointmentsByUserId = async (req, res) => {
   try {
-    const appointments = await Appointment.find({
-      user: req.params.userId,
-    }).populate("doctor user");
+    const userId = req.params.userId;
+    if (!ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
 
+    const appointments = await Appointment.find({ user: userId }).populate(
+      "doctor user"
+    );
     res.status(200).json(appointments);
   } catch (error) {
+    console.error("❌ Error getting appointments by user ID:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
