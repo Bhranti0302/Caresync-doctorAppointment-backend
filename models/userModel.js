@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import Appointment from "./appointmentModel.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -13,37 +14,44 @@ const userSchema = new mongoose.Schema(
       required: [true, "Email is required"],
       unique: true,
       lowercase: true,
-      match: [/\S+@\S+\.\S+/, "Please enter a valid email address"],
+      match: [/\S+@\S+\.\S+/, "Invalid email format"],
     },
     password: {
       type: String,
       required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters"],
+      minLength: [6, "Password must be at least 6 characters long"],
     },
-    age: { type: Number, min: [0, "Age must be positive"] },
-    gender: { type: String, enum: ["Male", "Female", "Other"] },
-
-    // ✅ Updated address field
-    address: {
-      line1: { type: String, default: "" },
-      line2: { type: String, default: "" },
+    phone: String,
+    address: Object,
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Other"],
     },
-
-    phone: { type: String, default: "+91 00000 00000" },
+    age: {
+      type: Number,
+      min: [0, "Age cannot be negative"],
+    },
     role: {
       type: String,
-      enum: ["patient", "doctor", "admin"],
+      enum: ["patient", "admin"],
       default: "patient",
     },
     image: {
-      type: String,
-      default: "https://cdn-icons-png.flaticon.com/512/9131/9131529.png",
+      url: String,
+      public_id: String,
     },
-
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
+
+// 🗑️ Auto-delete appointments if user is removed
+userSchema.pre("findOneAndDelete", async function (next) {
+  const userId = this.getQuery()._id;
+  await Appointment.deleteMany({ user: userId });
+  console.log("🗑️ Deleted appointments linked to user:", userId);
+  next();
+});
 
 export default mongoose.model("User", userSchema);

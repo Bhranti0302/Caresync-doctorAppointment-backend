@@ -1,111 +1,103 @@
 import User from "../models/userModel.js";
+import Appointment from "../models/appointmentModel.js";
 import bcrypt from "bcryptjs";
-import { createBaseController } from "./baseController.js";
 import { v2 as cloudinary } from "cloudinary";
 
-// ✅ Base controller for generic CRUD
-export const userController = createBaseController(User);
-
-// ===============================
-// ✅ Add new user
-// ===============================
-export const addUser = async (req, res) => {
+// ------------------- GET LOGGED-IN USER PROFILE -------------------
+export const getUserProfile = async (req, res) => {
   try {
-    const { name, email, password, phone, address, role } = req.body;
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Name, email, and password are required" });
-    }
-
-    const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const imagePath = req.file
-      ? req.file.path
-      : "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      phone,
-      address,
-      role: role || "patient",
-      image: imagePath,
-    });
-
-    res.status(201).json({
-      message: "User added successfully",
-      user,
-    });
+    res.status(200).json(user);
   } catch (error) {
-    console.error("❌ Error adding user:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// ===============================
-// ✅ Update user profile
-// ===============================
-export const updateUserDetails = async (req, res) => {
+// ------------------- UPDATE PROFILE (LOGGED-IN USER) -------------------
+export const updateUserProfile = async (req, res) => {
   try {
-    const { id } = req.params;
-    const currentUser = req.user;
-
-    const user = await User.findById(id);
+    const userId = req.user.id;
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // 🔐 Permission check
-    if (
-      currentUser.role !== "admin" &&
-      user._id.toString() !== currentUser.id.toString()
-    ) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
+    let updateData = { ...req.body };
 
-    const updates = { ...req.body };
-
-    // -------------------------------
-    // 🔹 Upload image to Cloudinary
-    // -------------------------------
+    // Image update
     if (req.file) {
-      console.log("☁️ Uploading image to Cloudinary...");
+      if (user.image?.public_id) {
+        await cloudinary.uploader.destroy(user.image.public_id);
+      }
 
-      const cloudUpload = await cloudinary.uploader.upload(req.file.path, {
-        folder: "CareSync/users",
-      });
-
-      updates.image = cloudUpload.secure_url;
-    }
-
-    // 🔹 Handle Address object
-    if (req.body["address[line1]"] || req.body["address[line2]"]) {
-      updates.address = {
-        line1: req.body["address[line1]"] || "",
-        line2: req.body["address[line2]"] || "",
+      updateData.image = {
+        url: req.file.path,
+        public_id: req.file.filename,
       };
     }
 
-    // Password should not be updated here
-    delete updates.password;
+    // Password update
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
 
-    const updatedUser = await User.findByIdAndUpdate(id, updates, {
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
       runValidators: true,
     }).select("-password");
 
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ------------------- DELETE LOGGED-IN USER -------------------
+export const deleteMyAccount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const deletedUser = await User.findByIdAndDelete(userId);
+    if (!deletedUser)
+      return res.status(404).json({ message: "User not found" });
+
+    if (deletedUser?.image?.public_id) {
+      await cloudinary.uploader.destroy(deletedUser.image.public_id);
+    }
+
+    await Appointment.deleteMany({ user: userId });
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
+
     res.status(200).json({
-      message: "User updated successfully",
-      user: updatedUser,
+      message: "Account deleted successfully",
     });
   } catch (error) {
-    console.error("❌ Error updating user:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ------------------- ADMIN: GET ALL USERS -------------------
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ------------------- ADMIN: GET USER BY ID -------------------
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json(user);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

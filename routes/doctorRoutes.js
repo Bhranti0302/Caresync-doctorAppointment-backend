@@ -1,27 +1,51 @@
 import express from "express";
 import upload from "../middleware/uploadMiddleware.js";
-import {
-  addDoctor,
-  updateDoctorDetails,
-  doctorController,
-} from "../controllers/doctorController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { allowRoles } from "../middleware/roleMiddleware.js";
+
+import {
+  getAllDoctors,
+  getDoctorById,
+  addDoctor,
+  updateDoctor,
+  deleteDoctor,
+  updateDoctorByMe,
+} from "../controllers/doctorController.js";
 
 const router = express.Router();
 
-// ✅ Add Doctor (with authentication and image upload)
-router.post("/add", protect, upload.single("image"), addDoctor);
+// 🌍 PUBLIC
+router.get("/", getAllDoctors);
+router.get("/:id", getDoctorById);
 
-// ✅ Get all doctors
-router.get("/", doctorController.getAll);
+// 👑 ADMIN — Add doctor
+router.post(
+  "/",
+  protect,
+  allowRoles("admin"),
+  upload.single("image"), // <== File field name must be `image`
+  addDoctor
+);
 
-// ✅ Get doctor by ID
-router.get("/:id", doctorController.getById);
+// 🗑 DELETE DOCTOR (ADMIN)
+router.delete("/:id", protect, allowRoles("admin"), deleteDoctor);
 
-// ✅ Update doctor details
-router.put("/:id", protect, upload.single("image"), updateDoctorDetails);
+// ✏ UPDATE (ADMIN + DOCTOR)
+router.put(
+  "/:id",
+  protect,
+  allowRoles("doctor", "admin"),
+  upload.single("image"),
+  updateDoctor
+);
 
-// ✅ Delete doctor
-router.delete("/:id", protect, doctorController.deleteById);
+// 🔥 DOCTOR UPDATE OWN PROFILE
+router.put(
+  "/me/update",
+  protect,
+  allowRoles("doctor"),
+  upload.single("image"),
+  updateDoctorByMe
+);
 
 export default router;

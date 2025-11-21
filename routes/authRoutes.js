@@ -1,28 +1,42 @@
 import express from "express";
 import {
   registerUser,
-  login,
+  loginUser,
   forgotPassword,
   resetPassword,
-  logout,
+  logoutUser,
 } from "../controllers/authController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Public Routes
+// -------------------------
+// 🚀 PUBLIC AUTH ROUTES
+// -------------------------
+
+// Register (patient & doctor both handled by controller)
 router.post("/register", registerUser);
-router.post("/login", login);
+
+// Login (for patient + doctor)
+router.post("/login", loginUser);
+
+// Forgot password (generates reset token)
 router.post("/forgot-password", forgotPassword);
+
+// Reset password using token
 router.post("/reset-password/:token", resetPassword);
 
-// Private Route (requires cookie)
+// -------------------------
+// 🔐 PRIVATE AUTH ROUTES
+// -------------------------
+
+// Get logged-in user details (auto detects patient/doctor)
 router.get("/me", protect, (req, res) => {
   res.status(200).json(req.user);
 });
 
-// Logout
-router.post("/logout", logout);
+// Logout (patient + doctor)
+router.post("/logout", protect, logoutUser);
 
 export default router;

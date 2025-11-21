@@ -1,67 +1,91 @@
 import mongoose from "mongoose";
+import Appointment from "./appointmentModel.js";
+import bcrypt from "bcryptjs";
 
 const doctorSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Doctor name is required"],
+      required: true,
       trim: true,
     },
     speciality: {
       type: String,
-      required: [true, "Speciality is required"],
+      required: true,
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: true,
       unique: true,
       lowercase: true,
-      match: [/\S+@\S+\.\S+/, "Please enter a valid email address"],
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters"],
+      required: true,
     },
     degree: {
       type: String,
-      required: [true, "Degree is required"],
+      required: true,
     },
+
+    // Experience stored as a string — e.g. "3 Years"
     experience: {
       type: String,
-      required: [true, "Experience is required"],
+      required: true,
+      trim: true,
     },
+
     about: {
       type: String,
-      maxlength: [2000, "About section too long"], // ✅ increased limit
       default: "",
     },
+
     fees: {
       type: Number,
-      required: [true, "Fees is required"],
-      min: [0, "Fees must be positive"],
+      default: 0,
     },
+
+    // ⬇ address only line1 + line2
     address: {
-      line1: { type: String, required: true },
-      line2: { type: String },
+      line1: { type: String, trim: true },
+      line2: { type: String, trim: true },
     },
+
+    // ⬇ image stored as Cloudinary URL string only
     image: {
       type: String,
-      default: "https://cdn-icons-png.flaticon.com/512/3774/3774299.png",
+      default:
+        "https://res.cloudinary.com/dggn2xhgk/image/upload/v1763117140/CareSync/doctors/profile_pic.png",
     },
+
+    phone: String,
+
     role: {
       type: String,
-      enum: ["doctor"],
       default: "doctor",
+      enum: ["doctor", "admin", "patient"],
     },
+
     available: {
       type: Boolean,
       default: true,
     },
-    resetPasswordToken: String,
-    resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
+
+// 🔐 Hash password before saving
+doctorSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// 🗑 Auto-delete appointments if doctor is removed
+doctorSchema.pre("findOneAndDelete", async function (next) {
+  const doctorId = this.getQuery()._id;
+  await Appointment.deleteMany({ doctor: doctorId });
+  next();
+});
 
 export default mongoose.model("Doctor", doctorSchema);

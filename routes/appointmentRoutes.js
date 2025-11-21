@@ -7,30 +7,48 @@ import {
   deleteAppointment,
   getAppointmentsByDoctorId,
   getAppointmentsByUserId,
+  getAppointmentsByMe,
 } from "../controllers/bookingController.js";
+
 import { protect } from "../middleware/authMiddleware.js";
+import { allowRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-//  Create appointment (user only)
-router.post("/", protect, createAppointment);
+// ---------------- PATIENT ----------------
+router.post("/", protect, allowRoles("patient"), createAppointment);
+router.get(
+  "/user/:userId",
+  protect,
+  allowRoles("patient", "admin"),
+  getAppointmentsByUserId
+);
+router.delete(
+  "/:id",
+  protect,
+  allowRoles("patient", "admin"),
+  deleteAppointment
+);
 
-// Get appointments by doctor ID
-router.get("/doctor/:doctorId", protect, getAppointmentsByDoctorId);
+// ---------------- DOCTOR ----------------
+router.get(
+  "/doctor/:doctorId",
+  protect,
+  allowRoles("doctor", "admin"),
+  getAppointmentsByDoctorId
+);
+router.put("/:id", protect, allowRoles("doctor", "admin"), updateAppointment);
 
-//  Get appointments by user ID
-router.get("/user/:userId", protect, getAppointmentsByUserId);
+// ---------------- BOTH DOCTOR & PATIENT ----------------
+router.get(
+  "/me",
+  protect,
+  allowRoles("patient", "doctor"),
+  getAppointmentsByMe
+);
 
-//  Get appointment by appointment ID
-router.get("/:id", protect, getAppointmentById);
-
-//  Get all appointments (admin/doctor/user filtered)
-router.get("/", protect, getAllAppointments);
-
-// Update appointment (doctor/admin only)
-router.put("/:id", protect, updateAppointment);
-
-//  Delete appointment (user/admin)
-router.delete("/:id", protect, deleteAppointment);
+// ---------------- ADMIN ----------------
+router.get("/", protect, allowRoles("admin"), getAllAppointments);
+router.get("/:id", protect, allowRoles("admin"), getAppointmentById);
 
 export default router;

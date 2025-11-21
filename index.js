@@ -1,4 +1,5 @@
-// server.js
+// index.js / server.js
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -17,7 +18,7 @@ import userRoutes from "./routes/userRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 
-// Load ENV
+// Load correct environment file
 dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
 
 const app = express();
@@ -26,16 +27,10 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS setup for multiple origins (e.g., Vite dev server)
-const allowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
-
+// CORS setup for local + production
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow non-browser requests (Postman)
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"), false);
-    },
+    origin: ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
   })
 );
@@ -46,7 +41,7 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("DB Error:", err.message));
 
-// -------------------- STATIC UPLOADS --------------------
+// -------------------- STATIC FILES --------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -69,4 +64,6 @@ app.use(errorHandler);
 
 // -------------------- START SERVER --------------------
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running in ${process.env.NODE_ENV} on port ${PORT}`)
+);
