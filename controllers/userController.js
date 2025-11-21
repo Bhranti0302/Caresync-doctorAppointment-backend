@@ -19,28 +19,50 @@ export const getUserProfile = async (req, res) => {
 export const updateUserProfile = async (req, res) => {
   try {
     const userId = req.user.id;
+
+    // Fetch user
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    let updateData = { ...req.body };
+    // Clone body for updates
+    const updateData = { ...req.body };
 
-    // Image update
+    // -------- IMAGE UPDATE --------
     if (req.file) {
-      if (user.image?.public_id) {
-        await cloudinary.uploader.destroy(user.image.public_id);
+      // Remove old image from Cloudinary if exists
+      if (
+        user.image &&
+        typeof user.image === "object" &&
+        user.image.public_id
+      ) {
+        try {
+          await cloudinary.uploader.destroy(user.image.public_id);
+        } catch (err) {
+          console.error("Failed to delete old image from Cloudinary:", err);
+        }
       }
 
+      // Save new image as object
       updateData.image = {
         url: req.file.path,
-        public_id: req.file.filename,
+        public_id: req.file.filename || "",
       };
     }
 
-    // Password update
+    // -------- PASSWORD UPDATE --------
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
+    // -------- SANITIZE LEGACY IMAGE FIELD --------
+    if (typeof user.image === "string") {
+      updateData.image = {
+        url: user.image,
+        public_id: "",
+      };
+    }
+
+    // -------- UPDATE USER --------
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
       runValidators: true,
@@ -48,6 +70,7 @@ export const updateUserProfile = async (req, res) => {
 
     res.status(200).json(updatedUser);
   } catch (error) {
+    console.error("Failed to update user profile:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -61,12 +84,15 @@ export const deleteMyAccount = async (req, res) => {
     if (!deletedUser)
       return res.status(404).json({ message: "User not found" });
 
-    if (deletedUser?.image?.public_id) {
+    // Delete image from Cloudinary
+    if (deletedUser.image?.public_id) {
       await cloudinary.uploader.destroy(deletedUser.image.public_id);
     }
 
+    // Delete all user's appointments
     await Appointment.deleteMany({ user: userId });
 
+    // Clear token cookie
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

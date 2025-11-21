@@ -23,9 +23,10 @@ router.put(
   "/me/update-profile",
   protect,
   allowRoles("patient"),
-  upload.single("profileImage"),
+  upload.single("image"), // <-- match the key you send
   updateUserProfile
 );
+
 router.delete("/me/delete", protect, allowRoles("patient"), deleteMyAccount);
 
 export default router;

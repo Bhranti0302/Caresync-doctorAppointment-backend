@@ -53,9 +53,12 @@ const doctorSchema = new mongoose.Schema(
 
     // ⬇ image stored as Cloudinary URL string only
     image: {
-      type: String,
-      default:
-        "https://res.cloudinary.com/dggn2xhgk/image/upload/v1763117140/CareSync/doctors/profile_pic.png",
+      url: {
+        type: String,
+        default:
+          "https://res.cloudinary.com/dggn2xhgk/image/upload/v1763117140/CareSync/doctors/profile_pic.png",
+      },
+      public_id: String,
     },
 
     phone: String,
