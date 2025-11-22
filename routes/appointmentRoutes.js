@@ -48,7 +48,8 @@ router.get(
 );
 
 // ---------------- ADMIN ----------------
-router.get("/", protect, allowRoles("admin"), getAllAppointments);
-router.get("/:id", protect, allowRoles("admin"), getAppointmentById);
+// Accessible by all logged-in users
+router.get("/", protect, getAllAppointments);
+router.get("/:id", protect, getAppointmentById);
 
 export default router;
