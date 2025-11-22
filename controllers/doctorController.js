@@ -27,42 +27,48 @@ export const getDoctorById = async (req, res) => {
 // ------------------- ADD DOCTOR (ADMIN) -------------------
 export const addDoctor = async (req, res) => {
   try {
-    if (!req.body) {
-      return res.status(400).json({ message: "Request body missing" });
-    }
+    const {
+      name,
+      email,
+      speciality,
+      password,
+      degree,
+      experience,
+      about,
+      fees,
+      phone,
+      address,
+    } = req.body;
 
-    const exists = await Doctor.findOne({ email: req.body.email });
-    if (exists) {
+    const exists = await Doctor.findOne({ email });
+    if (exists)
       return res.status(400).json({ message: "Email already exists" });
-    }
 
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    let imageUrl =
+      req.body.image ||
+      "https://via.placeholder.com/500x500.png?text=Doctor+Profile";
+
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "CareSync/doctors",
+      });
+      imageUrl = result.secure_url;
+    }
 
     const doctor = await Doctor.create({
-      name: req.body.name,
-      speciality: req.body.speciality,
-      email: req.body.email,
+      name,
+      email,
+      speciality,
       password: hashedPassword,
-      degree: req.body.degree,
-      experience: req.body.experience,
-      about: req.body.about,
-      fees: req.body.fees,
-      phone: req.body.phone,
-
-      // Address must be stored as object
-      address: {
-        line1: req.body.address?.line1,
-        line2: req.body.address?.line2,
-        city: req.body.address?.city,
-        state: req.body.address?.state,
-        pincode: req.body.address?.pincode,
-      },
-
-      // Image must be stored as single string
-      image: req.file
-        ? req.file.path // Cloudinary uploaded file path
-        : req.body.image, // If adding image via URL
-
+      degree,
+      experience,
+      about,
+      fees,
+      phone,
+      address,
+      image: imageUrl,
       role: "doctor",
       available: true,
     });
@@ -73,34 +79,22 @@ export const addDoctor = async (req, res) => {
   }
 };
 
-// ------------------- UPDATE DOCTOR (ADMIN + DOCTOR) -------------------
+// ---------------- UPDATE DOCTOR ----------------
 export const updateDoctor = async (req, res) => {
   try {
     const doctorId = req.params.id;
-    let updateData = { ...req.body };
-
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ message: "Doctor not found" });
 
-    // ⚠ Doctor can update only own profile
-    if (
-      req.user.role === "doctor" &&
-      doctor._id.toString() !== req.user.doctorId
-    ) {
-      return res
-        .status(403)
-        .json({ message: "You can update only your own profile" });
-    }
+    let updateData = { ...req.body };
 
-    // 🖼 Image handling
     if (req.file) {
-      if (doctor.image?.public_id) {
-        await cloudinary.uploader.destroy(doctor.image.public_id);
-      }
-      updateData.image = { url: req.file.path, public_id: req.file.filename };
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "CareSync/doctors",
+      });
+      updateData.image = result.secure_url;
     }
 
-    // 🔐 Password update
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
@@ -108,9 +102,9 @@ export const updateDoctor = async (req, res) => {
     const updatedDoctor = await Doctor.findByIdAndUpdate(doctorId, updateData, {
       new: true,
       runValidators: true,
-    }).select("-password");
+    });
 
-    res.status(200).json(updatedDoctor);
+    res.status(200).json({ message: "Doctor updated", doctor: updatedDoctor });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
