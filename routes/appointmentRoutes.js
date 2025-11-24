@@ -9,7 +9,6 @@ import {
   getAppointmentsByUserId,
   getAppointmentsByMe,
 } from "../controllers/bookingController.js";
-
 import { protect } from "../middleware/authMiddleware.js";
 import { allowRoles } from "../middleware/roleMiddleware.js";
 
@@ -47,8 +46,7 @@ router.get(
   getAppointmentsByMe
 );
 
-// ---------------- ADMIN ----------------
-// Accessible by all logged-in users
+// ---------------- ALL LOGGED-IN USERS ----------------
 router.get("/", protect, getAllAppointments);
 router.get("/:id", protect, getAppointmentById);
 
