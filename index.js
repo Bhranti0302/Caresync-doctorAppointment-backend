@@ -15,29 +15,31 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 // Middleware
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
-// Load env
+// Load environment variables
 dotenv.config();
 
 const app = express();
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS
+// CORS
 app.use(
   cors({
-    origin: [process.env.BASE_URL],
+    origin: ["http://localhost:5173", "https://your-frontend-domain.com"],
     credentials: true,
   })
 );
 
-// Static folder
+// Static folder for uploads
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Debug logging for Render
+// Debug logging
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Missing");
 
@@ -56,13 +58,13 @@ app.use(errorHandler);
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
 
-  // Express v5-safe catch-all route
+  // Catch-all route for SPA
   app.get(/.*/, (req, res) =>
     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"))
   );
 }
 
-// DB + Server
+// Connect to MongoDB and start server
 if (!process.env.MONGO_URI) {
   console.error("❌ MONGO_URI not set");
   process.exit(1);
