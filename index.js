@@ -21,25 +21,17 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ---------------------------------------------
-// 🔥 CORS CONFIG (support localhost + live)
-// ---------------------------------------------
+// CORS
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173", // local frontend
-      "https://YOUR_FRONTEND_URL", // ← replace with deployed frontend URL
-    ],
+    origin: [process.env.BASE_URL],
     credentials: true,
   })
 );
 
-// ---------------------------------------------
 app.use(cookieParser());
 
-// ---------------------------------------------
-// Static upload folder for images
-// ---------------------------------------------
+// Static folder for uploads
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -49,24 +41,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---------------------------------------------
-// ROUTES
-// ---------------------------------------------
+// Routes
 app.get("/", (req, res) => res.send("Backend Running 🚀"));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// ---------------------------------------------
-// ERROR HANDLERS
-// ---------------------------------------------
+// Error handlers
 app.use(notFound);
 app.use(errorHandler);
 
-// ---------------------------------------------
-// PRODUCTION FRONTEND SUPPORT
-// ---------------------------------------------
+// Production frontend support
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
   app.get("*", (req, res) =>
@@ -74,9 +60,12 @@ if (process.env.NODE_ENV === "production") {
   );
 }
 
-// ---------------------------------------------
-// DATABASE + SERVER
-// ---------------------------------------------
+// DB + Server
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI not set");
+  process.exit(1);
+}
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -88,4 +77,7 @@ mongoose
       )
     );
   })
-  .catch((err) => console.error("❌ DB ERROR:", err.message));
+  .catch((err) => {
+    console.error("❌ DB ERROR:", err.message);
+    process.exit(1);
+  });
