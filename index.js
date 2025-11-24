@@ -15,11 +15,14 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 // Middleware
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
+// Load env
 dotenv.config();
+
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // CORS
 app.use(
@@ -29,17 +32,14 @@ app.use(
   })
 );
 
-app.use(cookieParser());
-
-// Static folder for uploads
+// Static folder
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-});
+// Debug logging for Render
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Missing");
 
 // Routes
 app.get("/", (req, res) => res.send("Backend Running 🚀"));
@@ -52,7 +52,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Production frontend support
+// Production frontend
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
   app.get("*", (req, res) =>
@@ -69,13 +69,9 @@ if (!process.env.MONGO_URI) {
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("MongoDB Connected");
+    console.log("MongoDB Connected ✅");
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () =>
-      console.log(
-        `🚀 Server running in ${process.env.NODE_ENV} on port ${PORT}`
-      )
-    );
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => {
     console.error("❌ DB ERROR:", err.message);
