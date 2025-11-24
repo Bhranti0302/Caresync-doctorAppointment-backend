@@ -1,16 +1,10 @@
-// index.js / server.js
-
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
-
-// Middleware
-import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -18,52 +12,80 @@ import userRoutes from "./routes/userRoutes.js";
 import doctorRoutes from "./routes/doctorRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 
-// Load correct environment file
-dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
+// Middleware
+import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
+dotenv.config();
 const app = express();
 
-// -------------------- MIDDLEWARE --------------------
 app.use(express.json());
-app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
-// CORS setup for local + production
+// ---------------------------------------------
+// 🔥 CORS CONFIG (support localhost + live)
+// ---------------------------------------------
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+      "http://localhost:5173", // local frontend
+      "https://YOUR_FRONTEND_URL", // ← replace with deployed frontend URL
+    ],
     credentials: true,
   })
 );
 
-// -------------------- DATABASE --------------------
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log("DB Error:", err.message));
+// ---------------------------------------------
+app.use(cookieParser());
 
-// -------------------- STATIC FILES --------------------
+// ---------------------------------------------
+// Static upload folder for images
+// ---------------------------------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
 
-app.use("/uploads", express.static(uploadsDir));
-
-// -------------------- ROUTES --------------------
-app.get("/", (req, res) => res.send("Backend Running!"));
-
+// ---------------------------------------------
+// ROUTES
+// ---------------------------------------------
+app.get("/", (req, res) => res.send("Backend Running 🚀"));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// -------------------- ERROR HANDLERS --------------------
+// ---------------------------------------------
+// ERROR HANDLERS
+// ---------------------------------------------
 app.use(notFound);
 app.use(errorHandler);
 
-// -------------------- START SERVER --------------------
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} on port ${PORT}`)
-);
+// ---------------------------------------------
+// PRODUCTION FRONTEND SUPPORT
+// ---------------------------------------------
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "/frontend/dist")));
+  app.get("*", (req, res) =>
+    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"))
+  );
+}
+
+// ---------------------------------------------
+// DATABASE + SERVER
+// ---------------------------------------------
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("MongoDB Connected");
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () =>
+      console.log(
+        `🚀 Server running in ${process.env.NODE_ENV} on port ${PORT}`
+      )
+    );
+  })
+  .catch((err) => console.error("❌ DB ERROR:", err.message));
