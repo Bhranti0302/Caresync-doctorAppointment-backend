@@ -36,7 +36,7 @@ app.use(
   })
 );
 
-// Static folder for uploads
+// Static folder for uploads (optional)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -51,18 +51,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// 2️⃣ Production SPA fallback (safe version)
-// Production SPA fallback
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "frontend/dist")));
-
-  // Only send index.html for non-API requests
-  app.get(/^(?!\/api).*/, (req, res) => {
-    res.sendFile(path.join(__dirname, "frontend/dist", "index.html"));
-  });
-}
-
-// 3️⃣ Error handlers (404 / error middleware)
+// 2️⃣ Error handlers (404 / error middleware)
 app.use(notFound);
 app.use(errorHandler);
 
