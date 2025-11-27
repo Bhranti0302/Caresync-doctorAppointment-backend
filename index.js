@@ -46,25 +46,25 @@ console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Missing");
 
 // Routes
-app.get("/", (req, res) => res.send("Backend Running 🚀"));
+// ... other middleware (express.json, cors, cookieParser) ...
+
+// 1. API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// Error handlers
-app.use(notFound);
-app.use(errorHandler);
-
-// Production frontend
+// 2. Production build static serve + SPA fallback (only in production)
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "/frontend/dist")));
-
-  // Catch-all route for SPA
-  app.get(/.*/, (req, res) =>
-    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"))
+  app.use(express.static(path.join(__dirname, "frontend/dist")));
+  app.get("*", (req, res) =>
+    res.sendFile(path.join(__dirname, "frontend/dist", "index.html"))
   );
 }
+
+// 3. Error handlers (404 / error middleware)
+app.use(notFound);
+app.use(errorHandler);
 
 // Connect to MongoDB and start server
 if (!process.env.MONGO_URI) {
