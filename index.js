@@ -26,10 +26,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS
-// CORS
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://your-frontend-domain.com"],
+    origin: [
+      "http://localhost:5173",
+      "https://caresync-doctorappointment.onrender.com", // Frontend (same as backend if you are serving frontend)
+    ],
     credentials: true,
   })
 );

@@ -21,8 +21,8 @@ const sendTokenResponse = (res, user) => {
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     path: "/",
   });
 };
@@ -174,6 +174,11 @@ export const resetPassword = async (req, res) => {
 
 // -------------------- LOGOUT --------------------
 export const logoutUser = async (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("token", {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    path: "/",
+  });
+
   res.status(200).json({ message: "Logged out successfully" });
 };
