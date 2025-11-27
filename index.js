@@ -20,16 +20,17 @@ dotenv.config();
 
 const app = express();
 
+// --------------------
 // Middleware
+// --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
+      "http://localhost:5173", // your frontend
       "https://caresync-doctorappointment.onrender.com",
     ],
     credentials: true,
@@ -41,21 +42,36 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// --------------------
 // Debug logging
+// --------------------
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Missing");
 
-// 1️⃣ API Routes
+// --------------------
+// Simple root route (friendly check)
+// --------------------
+app.get("/", (req, res) => {
+  res.json({ message: "Backend is running!" });
+});
+
+// --------------------
+// API Routes
+// --------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// 2️⃣ Error handlers (404 / error middleware)
+// --------------------
+// Error handlers
+// --------------------
 app.use(notFound);
 app.use(errorHandler);
 
-// Connect to MongoDB and start server
+// --------------------
+// Connect to MongoDB & Start Server
+// --------------------
 if (!process.env.MONGO_URI) {
   console.error("❌ MONGO_URI not set");
   process.exit(1);
