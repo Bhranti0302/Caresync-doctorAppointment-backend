@@ -54,12 +54,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// 2. Production build static serve + SPA fallback (only in production)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "frontend/dist")));
-  app.get("*", (req, res) =>
-    res.sendFile(path.join(__dirname, "frontend/dist", "index.html"))
-  );
+
+  app.get("/*", (req, res) => {
+    res.sendFile(path.join(__dirname, "frontend/dist/index.html"));
+  });
 }
 
 // 3. Error handlers (404 / error middleware)
