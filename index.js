@@ -15,63 +15,51 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 // Middleware
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// --------------------
 // Middleware
-// --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// CORS
 app.use(
   cors({
     origin: [
-      "http://localhost:5173", // your frontend
+      "http://localhost:5173",
       "https://caresync-doctorappointment.onrender.com",
     ],
     credentials: true,
   })
 );
 
-// Static folder for uploads (optional)
+// Optional: static uploads
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --------------------
-// Debug logging
-// --------------------
+// Debug
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Missing");
 
-// --------------------
-// Simple root route (friendly check)
-// --------------------
-app.get("/", (req, res) => {
-  res.json({ message: "Backend is running!" });
-});
-
-// --------------------
-// API Routes
-// --------------------
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// --------------------
+// Health check route
+app.get("/", (req, res) => {
+  res.json({ message: "Backend is running!" });
+});
+
 // Error handlers
-// --------------------
 app.use(notFound);
 app.use(errorHandler);
 
-// --------------------
-// Connect to MongoDB & Start Server
-// --------------------
+// MongoDB connection + server
 if (!process.env.MONGO_URI) {
   console.error("❌ MONGO_URI not set");
   process.exit(1);
