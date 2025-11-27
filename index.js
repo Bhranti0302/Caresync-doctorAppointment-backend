@@ -30,7 +30,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://caresync-doctorappointment.onrender.com", // Frontend (same as backend if you are serving frontend)
+      "https://caresync-doctorappointment.onrender.com",
     ],
     credentials: true,
   })
@@ -45,16 +45,24 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Missing");
 
-// Routes
-// ... other middleware (express.json, cors, cookieParser) ...
-
-// 1. API routes
+// 1️⃣ API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
-// 3. Error handlers (404 / error middleware)
+// 2️⃣ Production SPA fallback (safe version)
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "frontend/dist")));
+
+  // Only send index.html for non-API GET requests
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(__dirname, "frontend/dist", "index.html"));
+  });
+}
+
+// 3️⃣ Error handlers (404 / error middleware)
 app.use(notFound);
 app.use(errorHandler);
 
