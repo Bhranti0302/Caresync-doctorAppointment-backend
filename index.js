@@ -52,12 +52,12 @@ app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 
 // 2️⃣ Production SPA fallback (safe version)
+// Production SPA fallback
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "frontend/dist")));
 
-  // Only send index.html for non-API GET requests
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) return next();
+  // Only send index.html for non-API requests
+  app.get(/^(?!\/api).*/, (req, res) => {
     res.sendFile(path.join(__dirname, "frontend/dist", "index.html"));
   });
 }
