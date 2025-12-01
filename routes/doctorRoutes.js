@@ -16,19 +16,24 @@ const router = express.Router();
 
 // 🌍 PUBLIC
 router.get("/", getAllDoctors);
-router.get("/:id", getDoctorById);
+
+// 🔥 DOCTOR UPDATE OWN PROFILE (MUST BE BEFORE /:id)
+router.put(
+  "/me/update",
+  protect,
+  allowRoles("doctor"),
+  upload.single("image"),
+  updateDoctorByMe
+);
 
 // 👑 ADMIN — Add doctor
 router.post(
   "/",
   protect,
   allowRoles("admin"),
-  upload.single("image"), // <== File field name must be `image`
+  upload.single("image"),
   addDoctor
 );
-
-// 🗑 DELETE DOCTOR (ADMIN)
-router.delete("/:id", protect, allowRoles("admin"), deleteDoctor);
 
 // ✏ UPDATE (ADMIN + DOCTOR)
 router.put(
@@ -39,13 +44,10 @@ router.put(
   updateDoctor
 );
 
-// 🔥 DOCTOR UPDATE OWN PROFILE
-router.put(
-  "/me/update",
-  protect,
-  allowRoles("doctor"),
-  upload.single("image"),
-  updateDoctorByMe
-);
+// 🗑 DELETE DOCTOR (ADMIN)
+router.delete("/:id", protect, allowRoles("admin"), deleteDoctor);
+
+// Get doctor by id (KEEP LAST)
+router.get("/:id", getDoctorById);
 
 export default router;

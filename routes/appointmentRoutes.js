@@ -9,6 +9,7 @@ import {
   getAppointmentsByUserId,
   getAppointmentsByMe,
 } from "../controllers/bookingController.js";
+
 import { protect } from "../middleware/authMiddleware.js";
 import { allowRoles } from "../middleware/roleMiddleware.js";
 
@@ -16,12 +17,14 @@ const router = express.Router();
 
 // ---------------- PATIENT ----------------
 router.post("/", protect, allowRoles("patient"), createAppointment);
+
 router.get(
   "/user/:userId",
   protect,
   allowRoles("patient", "admin"),
   getAppointmentsByUserId
 );
+
 router.delete(
   "/:id",
   protect,
@@ -36,9 +39,10 @@ router.get(
   allowRoles("doctor", "admin"),
   getAppointmentsByDoctorId
 );
+
 router.put("/:id", protect, allowRoles("doctor", "admin"), updateAppointment);
 
-// ---------------- BOTH DOCTOR & PATIENT ----------------
+// ---------------- BOTH ----------------
 router.get(
   "/me",
   protect,
@@ -46,8 +50,10 @@ router.get(
   getAppointmentsByMe
 );
 
-// ---------------- ALL LOGGED-IN USERS ----------------
+// ---------------- ALL ----------------
 router.get("/", protect, getAllAppointments);
+
+// ⚠ IMPORTANT: always last!
 router.get("/:id", protect, getAppointmentById);
 
 export default router;

@@ -1,112 +1,12 @@
 import User from "../models/userModel.js";
+import Doctor from "../models/doctorModel.js";
 import Appointment from "../models/appointmentModel.js";
+import cloudinary from "../config/cloudinary.js";
 import bcrypt from "bcryptjs";
-import { v2 as cloudinary } from "cloudinary";
 
-// ------------------- GET LOGGED-IN USER PROFILE -------------------
-export const getUserProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ------------------- UPDATE PROFILE (LOGGED-IN USER) -------------------
-export const updateUserProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // Fetch user
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    // Clone body for updates
-    const updateData = { ...req.body };
-
-    // -------- IMAGE UPDATE --------
-    if (req.file) {
-      // Remove old image from Cloudinary if exists
-      if (
-        user.image &&
-        typeof user.image === "object" &&
-        user.image.public_id
-      ) {
-        try {
-          await cloudinary.uploader.destroy(user.image.public_id);
-        } catch (err) {
-          console.error("Failed to delete old image from Cloudinary:", err);
-        }
-      }
-
-      // Save new image as object
-      updateData.image = {
-        url: req.file.path,
-        public_id: req.file.filename || "",
-      };
-    }
-
-    // -------- PASSWORD UPDATE --------
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
-
-    // -------- SANITIZE LEGACY IMAGE FIELD --------
-    if (typeof user.image === "string") {
-      updateData.image = {
-        url: user.image,
-        public_id: "",
-      };
-    }
-
-    // -------- UPDATE USER --------
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-      new: true,
-      runValidators: true,
-    }).select("-password");
-
-    res.status(200).json(updatedUser);
-  } catch (error) {
-    console.error("Failed to update user profile:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ------------------- DELETE LOGGED-IN USER -------------------
-export const deleteMyAccount = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const deletedUser = await User.findByIdAndDelete(userId);
-    if (!deletedUser)
-      return res.status(404).json({ message: "User not found" });
-
-    // Delete image from Cloudinary
-    if (deletedUser.image?.public_id) {
-      await cloudinary.uploader.destroy(deletedUser.image.public_id);
-    }
-
-    // Delete all user's appointments
-    await Appointment.deleteMany({ user: userId });
-
-    // Clear token cookie
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    });
-
-    res.status(200).json({
-      message: "Account deleted successfully",
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ------------------- ADMIN: GET ALL USERS -------------------
+/* ================================
+   ✅ GET ALL USERS (ADMIN)
+================================ */
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -116,13 +16,120 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// ------------------- ADMIN: GET USER BY ID -------------------
+/* ================================
+   ✅ GET USER BY ID (ADMIN)
+================================ */
 export const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================================
+   ✅ GET USER PROFILE (SELF)
+================================ */
+export const getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================================
+   ✅ UPDATE USER PROFILE
+================================ */
+export const updateUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (req.file) {
+      if (user.image?.public_id) {
+        await cloudinary.uploader.destroy(user.image.public_id);
+      }
+
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "CareSync/users",
+      });
+
+      user.image = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
+    }
+
+    Object.assign(user, req.body);
+
+    if (req.body.password) {
+      user.password = await bcrypt.hash(req.body.password, 10);
+    }
+
+    await user.save();
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Update user error:", error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================================
+   ✅ DELETE USER (ADMIN)
+================================ */
+export const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    await Appointment.deleteMany({ user: req.params.id });
+
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* ================================
+   ✅ DELETE MY ACCOUNT (SELF)
+================================ */
+export const deleteMyAccount = async (req, res) => {
+  try {
+    const userId = req.user.userId; // from your JWT
+
+    const user =
+      (await User.findByIdAndDelete(userId)) ||
+      (await Doctor.findByIdAndDelete(userId));
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await Appointment.deleteMany({
+      $or: [{ user: userId }, { doctor: userId }],
+    });
+
+    // Clear token cookie
+    res.clearCookie("token", {
+      path: "/",
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(200).json({ message: "Account deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -15,20 +15,24 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 // Middleware
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
-dotenv.config();
+/* ✅ Load correct .env file */
+const envFile = `.env.${process.env.NODE_ENV || "development"}`;
+dotenv.config({ path: envFile });
 
 const app = express();
 
-// Middleware
+// Body & cookies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS
+// ✅ CORS — FIXED
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
+      "http://localhost:3000",
+      "https://www.caresync.dev", // ✅ your real frontend
       "https://caresync-doctorappointment.onrender.com",
     ],
     credentials: true,
@@ -52,14 +56,14 @@ app.use("/api/appointments", appointmentRoutes);
 
 // Health check route
 app.get("/", (req, res) => {
-  res.json({ message: "Backend is running!" });
+  res.json({ message: "Backend is running ✅" });
 });
 
 // Error handlers
 app.use(notFound);
 app.use(errorHandler);
 
-// MongoDB connection + server
+// MongoDB connection
 if (!process.env.MONGO_URI) {
   console.error("❌ MONGO_URI not set");
   process.exit(1);

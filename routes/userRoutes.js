@@ -13,20 +13,23 @@ import {
 
 const router = express.Router();
 
-// ---------------- ADMIN ROUTES ----------------
-router.get("/all-users", protect, allowRoles("admin"), getAllUsers);
-router.get("/:id", protect, allowRoles("admin"), getUserById);
-
 // ---------------- USER SELF ROUTES ----------------
 router.get("/me/profile", protect, allowRoles("patient"), getUserProfile);
+
 router.put(
   "/me/update-profile",
   protect,
   allowRoles("patient"),
-  upload.single("image"), // <-- match the key you send
+  upload.single("image"),
   updateUserProfile
 );
 
 router.delete("/me/delete", protect, allowRoles("patient"), deleteMyAccount);
+
+// ---------------- ADMIN ROUTES ----------------
+router.get("/all-users", protect, allowRoles("admin"), getAllUsers);
+
+// KEEP LAST
+router.get("/:id", protect, allowRoles("admin"), getUserById);
 
 export default router;

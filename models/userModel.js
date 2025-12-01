@@ -46,12 +46,19 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🗑️ Auto-delete appointments if user is removed
+// 🗑 Safe delete user appointments
 userSchema.pre("findOneAndDelete", async function (next) {
-  const userId = this.getQuery()._id;
-  await Appointment.deleteMany({ user: userId });
-  console.log("🗑️ Deleted appointments linked to user:", userId);
-  next();
+  try {
+    const userId = this.getQuery()._id;
+    if (userId) {
+      await Appointment.deleteMany({ user: userId });
+      console.log("🗑 Deleted appointments linked to user:", userId);
+    }
+    next();
+  } catch (error) {
+    console.error("Error deleting user's appointments:", error.message);
+    next(error);
+  }
 });
 
 export default mongoose.model("User", userSchema);
