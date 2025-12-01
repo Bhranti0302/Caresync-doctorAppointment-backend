@@ -20,8 +20,11 @@ const doctorSchema = new mongoose.Schema(
       pincode: { type: String, trim: true },
     },
     image: {
-      type: String,
-      default: "https://via.placeholder.com/500x500.png?text=Doctor+Profile",
+      url: {
+        type: String,
+        default: "https://via.placeholder.com/500x500.png?text=Doctor+Profile",
+      },
+      public_id: { type: String, default: null },
     },
     phone: { type: String },
     role: {

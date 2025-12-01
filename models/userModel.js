@@ -37,8 +37,11 @@ const userSchema = new mongoose.Schema(
       default: "patient",
     },
     image: {
-      url: String,
-      public_id: String,
+      url: {
+        type: String,
+        default: "https://via.placeholder.com/500x500.png?text=User+Profile",
+      },
+      public_id: { type: String, default: null },
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,

@@ -52,32 +52,43 @@ export const getUserProfile = async (req, res) => {
 export const updateUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Image upload or default
     if (req.file) {
       if (user.image?.public_id) {
         await cloudinary.uploader.destroy(user.image.public_id);
       }
-
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "CareSync/users",
       });
-
-      user.image = {
-        url: result.secure_url,
-        public_id: result.public_id,
-      };
+      user.image.url = result.secure_url;
+      user.image.public_id = result.public_id;
+    } else if (!user.image?.url) {
+      user.image.url =
+        "https://via.placeholder.com/500x500.png?text=User+Profile";
+      user.image.public_id = null;
     }
 
-    Object.assign(user, req.body);
+    // Safe fields update
+    const allowedFields = [
+      "name",
+      "email",
+      "phone",
+      "address",
+      "gender",
+      "age",
+    ];
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) user[field] = req.body[field];
+    });
 
+    // Password
     if (req.body.password) {
       user.password = await bcrypt.hash(req.body.password, 10);
     }
 
     await user.save();
-
     res.status(200).json(user);
   } catch (error) {
     console.error("Update user error:", error.message);
