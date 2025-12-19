@@ -33,13 +33,15 @@ export const protect = async (req, res, next) => {
     }
 
     // Attach user to request
-    req.user = {
-      _id: user._id.toString(),  // 🔹 always use _id
-      name: user.name,
-      email: user.email,
-      role: user.role || "user",
-      doctorId: user.role === "doctor" ? user._id.toString() : null,
-    };
+   req.user = {
+  _id: user._id.toString(),
+  userId: user._id.toString(), // required by userController
+  name: user.name,
+  email: user.email,
+  role: user.role || "user",
+  doctorId: user.role === "doctor" ? user._id.toString() : null,
+};
+
 
     next();
   } catch (error) {
