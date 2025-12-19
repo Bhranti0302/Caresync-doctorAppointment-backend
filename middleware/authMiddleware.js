@@ -7,7 +7,7 @@ dotenv.config();
 
 export const protect = async (req, res, next) => {
   try {
-    const token = req.cookies?.token;
+    const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({ message: "Not authorized, no token" });
@@ -23,8 +23,8 @@ export const protect = async (req, res, next) => {
 
     const id = decoded.userId;
 
-    // Find user in User or Doctor table
-    let user =
+    // Find user in User or Doctor collection
+    const user =
       (await User.findById(id).select("-password")) ||
       (await Doctor.findById(id).select("-password"));
 
@@ -32,14 +32,12 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // 🔥 Attach logged-in user info
+    // Attach user to request
     req.user = {
-      _id: user._id.toString(),
-      id: user._id.toString(),
+      _id: user._id.toString(),  // 🔹 always use _id
       name: user.name,
       email: user.email,
       role: user.role || "user",
-      // ⚠ doctorId required for doctor routes
       doctorId: user.role === "doctor" ? user._id.toString() : null,
     };
 

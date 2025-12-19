@@ -9,9 +9,10 @@ export const createAppointment = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // 🔹 Use req.user._id from middleware
     const appointment = await Appointment.create({
       doctor,
-      user: req.user.userId,
+      user: req.user._id,
       date,
       time,
       reason,
@@ -25,17 +26,16 @@ export const createAppointment = async (req, res) => {
   }
 };
 
-// ✅ GET APPOINTMENTS BY LOGGED-IN USER OR DOCTOR
+// ✅ GET APPOINTMENTS FOR LOGGED-IN USER OR DOCTOR
 export const getAppointmentsByMe = async (req, res) => {
   try {
-    const userId = req.user?._id || req.user?.id; // get correct user id
+    const userId = req.user._id;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     let appointments;
-
-    if (req.user.role === "patient") {
+    if (req.user.role === "patient" || req.user.role === "user") {
       appointments = await Appointment.find({ user: userId }).populate(
         "doctor user"
       );
@@ -49,18 +49,17 @@ export const getAppointmentsByMe = async (req, res) => {
 
     res.status(200).json(appointments);
   } catch (error) {
-    console.error("❌ Error fetching appointments:", error.message);
+    console.error("Error fetching appointments:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// ✅ GET APPOINTMENTS BY USER ID
+// ✅ GET APPOINTMENTS BY USER ID (Admin or Doctor)
 export const getAppointmentsByUserId = async (req, res) => {
   try {
-    const appointments = await Appointment.find({
-      user: req.params.id,
-    }).populate("doctor user");
+    const appointments = await Appointment.find({ user: req.params.id }).populate(
+      "doctor user"
+    );
 
     res.status(200).json(appointments);
   } catch (error) {
@@ -72,9 +71,9 @@ export const getAppointmentsByUserId = async (req, res) => {
 // ✅ GET APPOINTMENTS BY DOCTOR ID
 export const getAppointmentsByDoctorId = async (req, res) => {
   try {
-    const appointments = await Appointment.find({
-      doctor: req.params.id,
-    }).populate("doctor user");
+    const appointments = await Appointment.find({ doctor: req.params.id }).populate(
+      "doctor user"
+    );
 
     res.status(200).json(appointments);
   } catch (error) {
@@ -143,7 +142,7 @@ export const deleteAppointment = async (req, res) => {
   }
 };
 
-// ✅ GET ALL APPOINTMENTS (ADMIN ONLY)
+// ✅ GET ALL APPOINTMENTS (Admin Only)
 export const getAllAppointments = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
