@@ -28,16 +28,21 @@ export const createAppointment = async (req, res) => {
 // ✅ GET APPOINTMENTS BY LOGGED-IN USER OR DOCTOR
 export const getAppointmentsByMe = async (req, res) => {
   try {
+    const userId = req.user?._id || req.user?.id; // get correct user id
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     let appointments;
 
     if (req.user.role === "patient") {
-      appointments = await Appointment.find({ user: req.user.userId }).populate(
+      appointments = await Appointment.find({ user: userId }).populate(
         "doctor user"
       );
     } else if (req.user.role === "doctor") {
-      appointments = await Appointment.find({
-        doctor: req.user.userId,
-      }).populate("doctor user");
+      appointments = await Appointment.find({ doctor: userId }).populate(
+        "doctor user"
+      );
     } else {
       return res.status(403).json({ message: "Unauthorized user role" });
     }
@@ -48,6 +53,7 @@ export const getAppointmentsByMe = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✅ GET APPOINTMENTS BY USER ID
 export const getAppointmentsByUserId = async (req, res) => {

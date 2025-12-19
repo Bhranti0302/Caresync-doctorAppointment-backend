@@ -46,7 +46,7 @@ router.put("/:id", protect, allowRoles("doctor", "admin"), updateAppointment);
 router.get(
   "/me",
   protect,
-  allowRoles("patient", "doctor"),
+  allowRoles("patient", "doctor","admin"),
   getAppointmentsByMe
 );
 
