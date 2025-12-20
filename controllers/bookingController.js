@@ -1,3 +1,5 @@
+// controllers/bookingController.js
+
 import Appointment from "../models/appointmentModel.js";
 
 // ✅ CREATE APPOINTMENT
@@ -9,7 +11,6 @@ export const createAppointment = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 🔹 Use req.user._id from middleware
     const appointment = await Appointment.create({
       doctor,
       user: req.user._id,
@@ -30,9 +31,6 @@ export const createAppointment = async (req, res) => {
 export const getAppointmentsByMe = async (req, res) => {
   try {
     const userId = req.user._id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
 
     let appointments;
     if (req.user.role === "patient" || req.user.role === "user") {
@@ -57,7 +55,9 @@ export const getAppointmentsByMe = async (req, res) => {
 // ✅ GET APPOINTMENTS BY USER ID (Admin or Doctor)
 export const getAppointmentsByUserId = async (req, res) => {
   try {
-    const appointments = await Appointment.find({ user: req.params.id }).populate(
+    const userId = req.params.userId; // FIXED
+
+    const appointments = await Appointment.find({ user: userId }).populate(
       "doctor user"
     );
 
@@ -71,7 +71,9 @@ export const getAppointmentsByUserId = async (req, res) => {
 // ✅ GET APPOINTMENTS BY DOCTOR ID
 export const getAppointmentsByDoctorId = async (req, res) => {
   try {
-    const appointments = await Appointment.find({ doctor: req.params.id }).populate(
+    const doctorId = req.params.doctorId; // FIXED
+
+    const appointments = await Appointment.find({ doctor: doctorId }).populate(
       "doctor user"
     );
 
