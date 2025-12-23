@@ -50,7 +50,7 @@ doctorSchema.pre("findOneAndDelete", async function (next) {
     const doctorId = this.getQuery()._id;
     if (doctorId) {
       await Appointment.deleteMany({ doctor: doctorId });
-      console.log("🗑 Deleted appointments for doctor:", doctorId);
+     
     }
     next();
   } catch (error) {

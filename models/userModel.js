@@ -55,7 +55,7 @@ userSchema.pre("findOneAndDelete", async function (next) {
     const userId = this.getQuery()._id;
     if (userId) {
       await Appointment.deleteMany({ user: userId });
-      console.log("🗑 Deleted appointments linked to user:", userId);
+      
     }
     next();
   } catch (error) {

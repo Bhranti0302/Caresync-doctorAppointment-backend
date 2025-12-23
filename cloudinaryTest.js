@@ -12,7 +12,7 @@ cloudinary.config({
 async function testConnection() {
   try {
     const result = await cloudinary.api.ping();
-    console.log("✅ Cloudinary Connected:", result);
+
   } catch (err) {
     console.error("❌ Cloudinary Error:", err.message);
   }

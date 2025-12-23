@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// -------------------- GENERATE TOKEN --------------------
+// ---------------- JWT Helper ----------------
 const sendTokenResponse = (res, user) => {
   const token = jwt.sign(
     {
@@ -24,103 +24,129 @@ const sendTokenResponse = (res, user) => {
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     path: "/",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+
+  return token;
 };
 
-// ========================================================
-//                    REGISTER
-// ========================================================
+// ---------------- REGISTER ----------------
 export const registerUser = async (req, res) => {
+  
+
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, age, phone, address } = req.body;
 
-    if (!email || !password || !name)
+    if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
+    }
 
-    // ---------- REGISTER DOCTOR ----------
+    // Check if email exists
+    const existingUser =
+      (await User.findOne({ email })) || (await Doctor.findOne({ email }));
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Handle image
+    const image = {
+      url:
+        req.file?.path ||
+        (role === "doctor"
+          ? "https://via.placeholder.com/500x500.png?text=Doctor+Profile"
+          : "https://via.placeholder.com/500x500.png?text=User+Profile"),
+      public_id: req.file ? req.file.filename : null,
+    };
+
+    // Parse age
+    const ageParsed = age ? Number(age) : undefined;
+
+    // Parse address safely
+    let addressParsed;
+    try {
+      addressParsed = address ? JSON.parse(address) : undefined;
+    } catch {
+      addressParsed = address ? { text: address } : undefined;
+    }
+
+    // Create user or doctor
+    let user;
     if (role === "doctor") {
-      const exists = await Doctor.findOne({ email });
-      if (exists)
-        return res.status(400).json({ message: "Email already exists" });
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const doctor = await Doctor.create({
+      user = await Doctor.create({
         name,
         email,
         password: hashedPassword,
         role: "doctor",
-        profilePic: "/uploads/default-doctor.png", // ⭐ DEFAULT PROFILE PIC
+        image,
+        age: ageParsed,
+        phone,
+        address: addressParsed,
       });
-
-      sendTokenResponse(res, doctor);
-
-      return res.status(201).json({
-        message: "Doctor registered successfully",
-        user: {
-          _id: doctor._id,
-          name: doctor.name,
-          email: doctor.email,
-          role: doctor.role,
-          doctorId: doctor._id,
-          profilePic: doctor.profilePic,
-        },
+    } else {
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: "patient",
+        image,
+        age: ageParsed,
+        phone,
+        address: addressParsed,
       });
     }
 
-    // ---------- REGISTER USER ----------
-    const exists = await User.findOne({ email });
-    if (exists)
-      return res.status(400).json({ message: "Email already exists" });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: "patient",
-      profilePic: "/uploads/default-user.png", // ⭐ DEFAULT USER IMAGE
-    });
-
     sendTokenResponse(res, user);
 
-    return res.status(201).json({
-      message: "User registered successfully",
+    res.status(201).json({
+      message: `${
+        role.charAt(0).toUpperCase() + role.slice(1)
+      } registered successfully`,
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        profilePic: user.profilePic,
+        doctorId: user.role === "doctor" ? user._id : null,
+        profilePic: user.image.url,
+        age: user.age || "",
+        phone: user.phone || "",
+        address: user.address || {},
       },
     });
   } catch (err) {
+    console.error("❌ Register error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// ========================================================
-//                    LOGIN
-// ========================================================
+// ---------------- LOGIN ----------------
 export const loginUser = async (req, res) => {
+
+
   try {
     const { email, password } = req.body;
 
-    if (!email || !password)
+    if (!email || !password) {
       return res
         .status(400)
         .json({ message: "Email and password are required" });
+    }
 
-    let user =
+    const user =
       (await User.findOne({ email }).select("+password")) ||
       (await Doctor.findOne({ email }).select("+password"));
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid password" });
+    }
 
     sendTokenResponse(res, user);
 
@@ -132,26 +158,42 @@ export const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         doctorId: user.role === "doctor" ? user._id : null,
-        profilePic: user.profilePic, // ⭐ ALWAYS RETURN IMAGE
+        profilePic: user.image.url,
+        age: user.age || "",
+        phone: user.phone || "",
+        address: user.address || {},
       },
     });
   } catch (err) {
+    console.error("❌ Login error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// ========================================================
-//                 FORGOT PASSWORD
-// ========================================================
+// ---------------- LOGOUT ----------------
+export const logoutUser = async (req, res) => {
+  res.clearCookie("token", {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    path: "/",
+  });
+
+
+  res.status(200).json({ message: "Logged out successfully" });
+};
+
+// ---------------- FORGOT PASSWORD ----------------
 export const forgotPassword = async (req, res) => {
+ 
   try {
     const { email } = req.body;
 
-    let user =
+    const user =
       (await User.findOne({ email })) || (await Doctor.findOne({ email }));
 
-    if (!user)
+    if (!user) {
       return res.status(404).json({ message: "Email not registered" });
+    }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
 
@@ -164,26 +206,30 @@ export const forgotPassword = async (req, res) => {
       token: resetToken,
     });
   } catch (err) {
+    console.error("❌ Forgot password error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// ========================================================
-//                 RESET PASSWORD
-// ========================================================
+// ---------------- RESET PASSWORD ----------------
 export const resetPassword = async (req, res) => {
+
+
   try {
     const token = req.params.token;
     const { password } = req.body;
 
-    let user =
+    const user =
       (await User.findOne({ resetPasswordToken: token })) ||
       (await Doctor.findOne({ resetPasswordToken: token }));
 
-    if (!user) return res.status(400).json({ message: "Invalid token" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid token" });
+    }
 
-    if (user.resetPasswordExpire < Date.now())
+    if (user.resetPasswordExpire < Date.now()) {
       return res.status(400).json({ message: "Token expired" });
+    }
 
     user.password = await bcrypt.hash(password, 10);
     user.resetPasswordToken = undefined;
@@ -193,19 +239,7 @@ export const resetPassword = async (req, res) => {
 
     res.status(200).json({ message: "Password reset successful" });
   } catch (err) {
+    console.error("❌ Reset password error:", err);
     res.status(500).json({ message: err.message });
   }
-};
-
-// ========================================================
-//                   LOGOUT
-// ========================================================
-export const logoutUser = async (req, res) => {
-  res.clearCookie("token", {
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    path: "/",
-  });
-
-  res.status(200).json({ message: "Logged out successfully" });
 };

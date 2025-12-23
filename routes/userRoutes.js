@@ -1,35 +1,43 @@
 import express from "express";
-import upload from "../middleware/uploadMiddleware.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { allowRoles } from "../middleware/roleMiddleware.js";
+import { createUpload } from "../middleware/uploadMiddleware.js";
 
 import {
   getAllUsers,
+  getUserById,
   getUserProfile,
   updateUserProfile,
+  deleteUser,
   deleteMyAccount,
-  getUserById,
 } from "../controllers/userController.js";
 
 const router = express.Router();
+const uploadUser = createUpload("users");
 
-// ---------------- USER SELF ROUTES ----------------
-router.get("/me/profile", protect, allowRoles("patient"), getUserProfile);
+// ==========================
+// User self routes FIRST
+// ==========================
+router.get("/profile/me", protect, getUserProfile);
 
 router.put(
-  "/me/update-profile",
+  "/profile/me",
   protect,
-  allowRoles("patient"),
-  upload.single("image"),
+  uploadUser.single("image"),
+  (req, res, next) => {
+   
+    next();
+  },
   updateUserProfile
 );
 
-router.delete("/me/delete", protect, allowRoles("patient"), deleteMyAccount);
+router.delete("/me", protect, deleteMyAccount);
 
-// ---------------- ADMIN ROUTES ----------------
-router.get("/all-users", protect, allowRoles("admin"), getAllUsers);
-
-// KEEP LAST
+// ==========================
+// Admin routes SECOND
+// ==========================
+router.get("/", protect, allowRoles("admin"), getAllUsers);
 router.get("/:id", protect, allowRoles("admin"), getUserById);
+router.delete("/:id", protect, allowRoles("admin"), deleteUser);
 
 export default router;

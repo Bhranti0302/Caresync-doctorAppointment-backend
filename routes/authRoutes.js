@@ -6,37 +6,34 @@ import {
   resetPassword,
   logoutUser,
 } from "../controllers/authController.js";
-
 import { protect } from "../middleware/authMiddleware.js";
+import { createUpload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-// -------------------------
-// 🚀 PUBLIC AUTH ROUTES
-// -------------------------
 
-// Register (patient & doctor both handled by controller)
-router.post("/register", registerUser);
 
-// Login (for patient + doctor)
+// Register (with optional image)
+router.post(
+  "/register",
+  createUpload("users").single("image"),
+  (req, res, next) => {
+   
+    next();
+  },
+  registerUser
+);
+
+// Login
 router.post("/login", loginUser);
 
-// Forgot password (generates reset token)
+// Logout
+router.post("/logout", protect, logoutUser);
+
+// Forgot password
 router.post("/forgot-password", forgotPassword);
 
-// Reset password using token
-router.post("/reset-password/:token", resetPassword);
-
-// -------------------------
-// 🔐 PRIVATE AUTH ROUTES
-// -------------------------
-
-// Get logged-in user details (auto detects patient/doctor)
-router.get("/me", protect, (req, res) => {
-  res.status(200).json(req.user);
-});
-
-// Logout (patient + doctor)
-router.post("/logout", protect, logoutUser);
+// Reset password
+router.put("/reset-password/:token", resetPassword);
 
 export default router;

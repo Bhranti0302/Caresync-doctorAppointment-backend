@@ -11,8 +11,6 @@ const envFile =
 
 dotenv.config({ path: envFile });
 
-console.log("Loaded from:", envFile);
-console.log("MONGO_URI:", process.env.MONGO_URI);
 
 async function createAdmin() {
   try {
@@ -21,13 +19,13 @@ async function createAdmin() {
     }
 
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB Connected");
+   
 
     const existingAdmin = await User.findOne({
       email: process.env.ADMIN_EMAIL,
     });
     if (existingAdmin) {
-      console.log("⚠️ Admin already exists:", existingAdmin.email);
+     
       process.exit(0);
     }
 
@@ -40,7 +38,7 @@ async function createAdmin() {
       role: "admin",
     });
 
-    console.log("✅ Admin created:", admin.email);
+   
     process.exit(0);
   } catch (error) {
     console.error("❌ Error creating admin:", error.message);

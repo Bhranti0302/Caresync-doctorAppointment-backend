@@ -1,59 +1,52 @@
 import express from "express";
 import {
   createAppointment,
-  getAllAppointments,
+  getAppointmentsByMe,
   getAppointmentById,
   updateAppointment,
   deleteAppointment,
-  getAppointmentsByDoctorId,
-  getAppointmentsByUserId,
-  getAppointmentsByMe,
-} from "../controllers/bookingController.js";
+  getAllAppointments,
+  updateBooking,getAppointmentsByDoctorId,
+  getDoctorAvailableSlots,
 
+} from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { allowRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// ---------------- PATIENT ----------------
+// Patient: create appointment
 router.post("/", protect, allowRoles("patient"), createAppointment);
 
+// Get logged-in user appointments
+router.get("/me", protect, allowRoles("patient", "doctor"), getAppointmentsByMe);
+
+// Get doctor available slots (for booking)
 router.get(
-  "/user/:userId",
+  "/doctor-slots/:doctorId",
   protect,
-  allowRoles("patient", "admin"),
-  getAppointmentsByUserId
+  allowRoles("admin", "doctor", "patient"),
+  getDoctorAvailableSlots
 );
 
-router.delete(
-  "/:id",
-  protect,
-  allowRoles("patient", "admin"),
-  deleteAppointment
-);
+// Get appointments by doctor ID (admin/doctor)
+router.get("/doctor/:doctorId", protect, allowRoles("admin", "doctor"), getAppointmentsByDoctorId);
 
-// ---------------- DOCTOR ----------------
-router.get(
-  "/doctor/:doctorId",
-  protect,
-  allowRoles("doctor", "admin"),
-  getAppointmentsByDoctorId
-);
+// Get single appointment
+router.get("/:id", protect, getAppointmentById);
 
+// Patient: pay for appointment
+router.put("/:id/pay", protect, allowRoles("patient"), updateBooking);
+
+// Update appointment (doctor/admin only)
 router.put("/:id", protect, allowRoles("doctor", "admin"), updateAppointment);
 
-// ---------------- BOTH ----------------
-router.get(
-  "/me",
-  protect,
-  allowRoles("patient", "doctor","admin"),
-  getAppointmentsByMe
-);
+// Delete appointment
+router.delete("/:id", protect, deleteAppointment);
 
-// ---------------- ALL ----------------
-router.get("/", protect, getAllAppointments);
+// Admin: get all appointments
+router.get("/", protect, allowRoles("admin"), getAllAppointments);
 
-// ⚠ IMPORTANT: always last!
-router.get("/:id", protect, getAppointmentById);
+
 
 export default router;

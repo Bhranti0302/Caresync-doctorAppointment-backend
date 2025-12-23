@@ -1,3 +1,4 @@
+// middlewares/authMiddleware.js
 import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 import Doctor from "../models/doctorModel.js";
@@ -13,7 +14,6 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "Not authorized, no token" });
     }
 
-    // Verify token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -23,7 +23,6 @@ export const protect = async (req, res, next) => {
 
     const id = decoded.userId;
 
-    // Find user in User or Doctor collection
     const user =
       (await User.findById(id).select("-password")) ||
       (await Doctor.findById(id).select("-password"));
@@ -32,16 +31,14 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Attach user to request
-   req.user = {
-  _id: user._id.toString(),
-  userId: user._id.toString(), // required by userController
-  name: user.name,
-  email: user.email,
-  role: user.role || "user",
-  doctorId: user.role === "doctor" ? user._id.toString() : null,
-};
-
+    req.user = {
+      _id: user._id.toString(),
+      userId: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role || "user",
+      doctorId: user.role === "doctor" ? user._id.toString() : null,
+    };
 
     next();
   } catch (error) {
