@@ -33,12 +33,12 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:3000",
-      "https://www.caresync.dev", // ✅ your real frontend
-      "https://caresync-doctorappointment.onrender.com",
+      "https://caresync-doctor-appointment-frontend-kv43iozx6.vercel.app", // ✅ real frontend (Vercel)
     ],
     credentials: true,
   })
 );
+
 
 // Optional: static uploads
 const __filename = fileURLToPath(import.meta.url);
